@@ -72,7 +72,7 @@ try {
   const benchScenario = join(tmpDir, "bench-scenario.json");
   writeFileSync(
     benchScenario,
-    JSON.stringify({ player: { flames: 100 }, random_motes: true, random_shades: true, random_drifters: true, wind_enabled: true })
+    JSON.stringify({ player: { flames: 999 }, random_motes: true, random_shades: true, random_drifters: true, wind_enabled: true })
   );
   const benchOut = join(tmpDir, "bench-21600.jsonl");
   const t0 = performance.now();
