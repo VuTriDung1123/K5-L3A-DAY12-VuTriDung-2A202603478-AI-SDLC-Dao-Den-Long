@@ -1,6 +1,6 @@
 {
   "name": "k5-l3a-day12-vutridung-dao-den-long",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "private": true,
   "type": "module",
   "description": "Day 12 AI SDLC — Dao Den Long (3D game + deterministic headless simulation)",
