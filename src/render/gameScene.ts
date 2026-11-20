@@ -5,16 +5,44 @@ import type { ActiveInputState, NightNumber, ScoreBreakdown } from "../core/type
 import { SoundBank } from "./audio.js";
 import { buildNightWorld, type WorldVisualHandle } from "./worldDecor.js";
 
+export interface KeyBindings {
+  moveUp: string;
+  moveDown: string;
+  moveLeft: string;
+  moveRight: string;
+  jump: string;
+  dash: string;
+  interact: string;
+  pulse: string;
+  pause: string;
+}
+
+export const DEFAULT_KEY_BINDINGS: KeyBindings = {
+  moveUp: "KeyW",
+  moveDown: "KeyS",
+  moveLeft: "KeyA",
+  moveRight: "KeyD",
+  jump: "Space",
+  dash: "ShiftLeft",
+  interact: "KeyE",
+  pulse: "KeyQ",
+  pause: "Escape",
+};
+
 export interface UserSettings {
   volume: number;
   mouseSensitivity: number;
   colorblindMode: boolean;
+  reducedMotion: boolean;
+  largeText: boolean;
+  keyBindings: KeyBindings;
 }
 
 export interface GameUiCallbacks {
   onNightComplete(result: {
     won: boolean;
     night: NightNumber;
+    seed: number;
     score: number;
     breakdown: ScoreBreakdown;
     reason: string | null;
@@ -33,10 +61,12 @@ export interface HudElements {
   scoreEl: HTMLElement;
   fuelListEl: HTMLElement;
   interactPromptEl: HTMLElement;
+  subtitleBannerEl: HTMLElement;
   moteBarEl: HTMLElement;
   cdDashEl: HTMLElement;
   cdPulseEl: HTMLElement;
   lanternArrowEl: HTMLElement;
+  shadeArrowEl: HTMLElement;
   minimapCanvas: HTMLCanvasElement;
 }
 
@@ -70,6 +100,7 @@ interface LanternVisual {
   fuelBarFill: THREE.Mesh;
   fuelBarMat: THREE.MeshBasicMaterial;
   light: THREE.PointLight;
+  lightShaft: THREE.Mesh;
   safeRing: THREE.Mesh;
 }
 
@@ -89,8 +120,9 @@ interface DrifterVisual {
 }
 
 /**
- * Coordinates the Three.js 3D world, radar minimap, 3D lantern fuel gauges,
- * colorblind accessibility mode, dash trails, and fixed 60 Hz GameSimulation loop.
+ * Coordinates the Three.js 3D Japanese-village world, radar minimap, 3D lantern fuel gauges,
+ * full accessibility (key rebinding, subtitles, shade-spawn directional arrow, reduced motion,
+ * large text, colorblind mode), and fixed 60 Hz GameSimulation loop.
  */
 export class DaoDenLongClient {
   private readonly container: HTMLElement;
@@ -106,7 +138,14 @@ export class DaoDenLongClient {
 
   private worldHandle: WorldVisualHandle | null = null;
   private sim: GameSimulation | null = null;
-  private settings: UserSettings = { volume: 0.7, mouseSensitivity: 1.0, colorblindMode: false };
+  private settings: UserSettings = {
+    volume: 0.7,
+    mouseSensitivity: 1.0,
+    colorblindMode: false,
+    reducedMotion: false,
+    largeText: false,
+    keyBindings: { ...DEFAULT_KEY_BINDINGS },
+  };
 
   private readonly playerGroup = buildMayMesh();
   private readonly dashTrailMeshes: THREE.Mesh[] = [];
@@ -134,17 +173,25 @@ export class DaoDenLongClient {
   private pendingPauseToggle = false;
   private sessionSeed = 42;
   private renderedMoteSlots = 0;
+  private inputLockedForRebind = false;
+
+  // Subtitle / visual cue state
+  private subtitleText = "";
+  private subtitleTimer = 0;
+  private recentShadePos: [number, number, number] | null = null;
+  private recentShadeArrowTimer = 0;
+  private cameraShakeTimer = 0;
 
   private readonly moteGeo = new THREE.SphereGeometry(0.24, 12, 12);
   private readonly moteRandomMat = new THREE.MeshStandardMaterial({
     color: PALETTE.moteCore,
     emissive: PALETTE.moteGlow,
-    emissiveIntensity: 1.8,
+    emissiveIntensity: 1.85,
   });
   private readonly moteDroppedMat = new THREE.MeshStandardMaterial({
     color: PALETTE.moteCore,
     emissive: PALETTE.lanternLit,
-    emissiveIntensity: 1.5,
+    emissiveIntensity: 1.55,
   });
 
   constructor(container: HTMLElement, hud: HudElements, callbacks: GameUiCallbacks) {
@@ -153,7 +200,7 @@ export class DaoDenLongClient {
     this.callbacks = callbacks;
 
     this.scene.background = new THREE.Color(PALETTE.sky);
-    this.scene.fog = new THREE.FogExp2(PALETTE.fog, 0.013);
+    this.scene.fog = new THREE.FogExp2(PALETTE.fog, 0.012);
 
     this.camera = new THREE.PerspectiveCamera(
       56,
@@ -171,13 +218,12 @@ export class DaoDenLongClient {
     this.scene.add(this.ambientLight);
     this.hemiLight = new THREE.HemisphereLight(0x9fb4ff, 0x162238, 0.48);
     this.scene.add(this.hemiLight);
-    const moon = new THREE.DirectionalLight(0xd2ddff, 0.68);
+    const moon = new THREE.DirectionalLight(0xd2ddff, 0.72);
     moon.position.set(25, 42, -20);
     this.scene.add(moon);
 
     this.scene.add(this.playerGroup.root);
 
-    // Dash afterimage trail ghosts
     const ghostGeo = new THREE.ConeGeometry(0.38, 0.9, 10);
     for (let i = 0; i < 4; i += 1) {
       const ghost = new THREE.Mesh(
@@ -209,10 +255,20 @@ export class DaoDenLongClient {
     this.rafId = requestAnimationFrame(this.loop);
   }
 
+  setInputLocked(locked: boolean): void {
+    this.inputLockedForRebind = locked;
+    if (locked) this.keys.clear();
+  }
+
   applySettings(settings: UserSettings): void {
-    this.settings = { ...settings };
+    this.settings = {
+      ...settings,
+      keyBindings: { ...settings.keyBindings },
+    };
     this.audio.setVolume(settings.volume);
     document.body.classList.toggle("colorblind", settings.colorblindMode);
+    document.body.classList.toggle("reduced-motion", settings.reducedMotion);
+    document.body.classList.toggle("large-text", settings.largeText);
   }
 
   startNight(night: NightNumber, seed = this.sessionSeed++): void {
@@ -229,6 +285,10 @@ export class DaoDenLongClient {
     this.pulseAnimRemaining = 0;
     this.pulseRing.visible = false;
     this.dashTrailHistory.length = 0;
+    this.subtitleText = "";
+    this.subtitleTimer = 0;
+    this.recentShadePos = null;
+    this.recentShadeArrowTimer = 0;
 
     for (const l of this.sim.lanterns) {
       const vis = buildLanternVisual(this.sim.tuning.safe_radius);
@@ -278,6 +338,11 @@ export class DaoDenLongClient {
     }
   }
 
+  private pushSubtitle(text: string, durationSec = 3.2): void {
+    this.subtitleText = text;
+    this.subtitleTimer = durationSec;
+  }
+
   private ensureMoteSlots(capacity: number): void {
     if (this.renderedMoteSlots === capacity) return;
     this.renderedMoteSlots = capacity;
@@ -316,8 +381,13 @@ export class DaoDenLongClient {
   }
 
   private readonly onKeyDown = (e: KeyboardEvent): void => {
+    if (this.inputLockedForRebind) return;
+    const activeTag = document.activeElement?.tagName;
+    if (activeTag === "INPUT" || activeTag === "TEXTAREA") return;
+
     this.audio.unlock();
-    if (e.code === "Escape" || e.code === "KeyP") {
+    const kb = this.settings.keyBindings;
+    if (e.code === kb.pause || (kb.pause === "Escape" && e.code === "KeyP")) {
       this.togglePause();
       return;
     }
@@ -362,6 +432,11 @@ export class DaoDenLongClient {
     this.lastPerf = now;
     const elapsedSec = (now - this.startPerf) / 1000;
 
+    if (this.subtitleTimer > 0) this.subtitleTimer = Math.max(0, this.subtitleTimer - dt);
+    if (this.recentShadeArrowTimer > 0)
+      this.recentShadeArrowTimer = Math.max(0, this.recentShadeArrowTimer - dt);
+    if (this.cameraShakeTimer > 0) this.cameraShakeTimer = Math.max(0, this.cameraShakeTimer - dt);
+
     if (this.sim) {
       if (this.keys.has("KeyJ")) this.camYawDeg = (this.camYawDeg + 120 * dt) % 360;
       if (this.keys.has("KeyL")) this.camYawDeg = (this.camYawDeg - 120 * dt) % 360;
@@ -383,9 +458,9 @@ export class DaoDenLongClient {
         if (this.sim.paused !== prevPause) {
           this.callbacks.onPauseToggled(this.sim.paused);
         }
-        this.handleAudioEvents(events, wasGroundedBefore);
+        this.handleAudioAndSubtitles(events, wasGroundedBefore);
 
-        if (this.sim.player.dashTicks > 0) {
+        if (this.sim.player.dashTicks > 0 && !this.settings.reducedMotion) {
           this.dashTrailHistory.unshift([...this.sim.player.pos]);
           if (this.dashTrailHistory.length > 4) this.dashTrailHistory.pop();
         } else if (this.dashTrailHistory.length > 0) {
@@ -395,9 +470,9 @@ export class DaoDenLongClient {
         this.accumulator -= FIXED_DT;
       }
 
-      this.worldHandle?.update(elapsedSec, this.sim.wind);
+      this.worldHandle?.update(elapsedSec, this.sim.wind, this.settings.reducedMotion);
       this.syncSceneVisuals(elapsedSec, dt);
-      this.updateCamera();
+      this.updateCamera(elapsedSec);
       this.updateHud(elapsedSec);
       this.drawMinimap(elapsedSec);
 
@@ -406,6 +481,7 @@ export class DaoDenLongClient {
         this.callbacks.onNightComplete({
           won: this.sim.state === "won",
           night: this.sim.night,
+          seed: this.sim.seed,
           score: this.sim.score,
           breakdown: { ...this.sim.scoreBreakdown },
           reason: this.sim.gameOverReason,
@@ -418,31 +494,37 @@ export class DaoDenLongClient {
   };
 
   private sampleInput(): ActiveInputState {
-    const forward = this.keys.has("KeyW") || this.keys.has("ArrowUp");
-    const backward = this.keys.has("KeyS") || this.keys.has("ArrowDown");
-    const right = this.keys.has("KeyD") || this.keys.has("ArrowRight");
-    const left = this.keys.has("KeyA") || this.keys.has("ArrowLeft");
+    const kb = this.settings.keyBindings;
+    const forward = this.keys.has(kb.moveUp) || this.keys.has("ArrowUp");
+    const backward = this.keys.has(kb.moveDown) || this.keys.has("ArrowDown");
+    const right = this.keys.has(kb.moveRight) || this.keys.has("ArrowRight");
+    const left = this.keys.has(kb.moveLeft) || this.keys.has("ArrowLeft");
     const mx = (left ? 1 : 0) - (right ? 1 : 0);
     const mz = (forward ? 1 : 0) - (backward ? 1 : 0);
 
     return {
       move: [mx, mz],
       cam_yaw_deg: this.camYawDeg,
-      jump: this.keys.has("Space"),
-      interact: this.keys.has("KeyE") || this.keys.has("KeyF"),
-      pulse: this.keys.has("KeyQ"),
-      dash: this.keys.has("ShiftLeft") || this.keys.has("ShiftRight"),
+      jump: this.keys.has(kb.jump),
+      interact: this.keys.has(kb.interact) || (kb.interact === "KeyE" && this.keys.has("KeyF")),
+      pulse: this.keys.has(kb.pulse),
+      dash:
+        this.keys.has(kb.dash) || (kb.dash === "ShiftLeft" && this.keys.has("ShiftRight")),
       pause: false,
     };
   }
 
-  private handleAudioEvents(events: ReturnType<GameSimulation["step"]>, wasGroundedBefore: boolean): void {
+  private handleAudioAndSubtitles(
+    events: ReturnType<GameSimulation["step"]>,
+    wasGroundedBefore: boolean
+  ): void {
     if (!this.sim) return;
     if (wasGroundedBefore && !this.sim.player.grounded && this.sim.player.vel[1] > 1) {
       this.audio.playJump();
     }
     if (this.sim.wind.warning && !this.lastWarnedWind) {
       this.audio.playWindWarn();
+      this.pushSubtitle(`⚠ Gió mạnh sắp thổi (hướng ${Math.round(this.sim.wind.dirDeg)}°)!`, 3.5);
     }
     this.lastWarnedWind = this.sim.wind.warning;
 
@@ -455,30 +537,43 @@ export class DaoDenLongClient {
     ) {
       this.sim.lastCountdownSecond = secsLeft;
       this.audio.playCountdownTick();
+      this.pushSubtitle(`⚠ Còn ${secsLeft} giây nữa tới Bình Minh!`, 1.4);
     }
 
     for (const ev of events) {
       if (ev.name === "mote_picked") this.audio.playPickup();
-      else if (ev.name === "charm_picked") this.audio.playCharm();
-      else if (ev.name === "dash") this.audio.playDash();
+      else if (ev.name === "charm_picked") {
+        this.audio.playCharm();
+        this.pushSubtitle("Đã nhặt Bùa Gió! Tốc độ 7.2 m/s & Lướt không hồi chiêu!", 3.0);
+      } else if (ev.name === "dash") this.audio.playDash();
       else if (ev.name === "deposit" || ev.name === "refuel") {
         const litNow = this.sim.lanterns.find((l) => l.id === ev.data.lantern_id)?.lit ?? false;
         this.audio.playDeposit(litNow);
       } else if (ev.name === "lantern_out") {
         this.audio.playHit();
+        this.pushSubtitle(`⚠ Đèn ${ev.data.lantern_id} đã cạn dầu và tắt!`, 3.5);
       } else if (ev.name === "pulse") {
         this.audio.playPulse();
-        this.pulseAnimRemaining = 0.45;
-        this.pulseRing.position.set(
-          this.sim.player.pos[0],
-          this.sim.player.pos[1] + 0.12,
-          this.sim.player.pos[2]
-        );
-        this.pulseRing.visible = true;
+        if (!this.settings.reducedMotion) {
+          this.pulseAnimRemaining = 0.45;
+          this.pulseRing.position.set(
+            this.sim.player.pos[0],
+            this.sim.player.pos[1] + 0.12,
+            this.sim.player.pos[2]
+          );
+          this.pulseRing.visible = true;
+        }
       } else if (ev.name === "shade_spawned") {
         this.audio.playShadeSpawn();
+        const spawned = this.sim.shades.find((s) => s.id === ev.data.id);
+        if (spawned) {
+          this.recentShadePos = [...spawned.pos];
+          this.recentShadeArrowTimer = 4.0;
+        }
+        this.pushSubtitle(`⚠ Bóng Mực (${ev.data.id}) vừa xuất hiện trong sương!`, 3.5);
       } else if (ev.name === "player_hit") {
         this.audio.playHit();
+        if (!this.settings.reducedMotion) this.cameraShakeTimer = 0.25;
       } else if (ev.name === "game_over") {
         this.audio.playGameOver(ev.data.result === "won");
       }
@@ -489,7 +584,10 @@ export class DaoDenLongClient {
     if (!this.sim) return;
     const sim = this.sim;
     const speedMag = Math.hypot(sim.player.vel[0], sim.player.vel[2]);
-    const walkBob = sim.player.grounded && speedMag > 0.4 ? Math.sin(elapsedSec * 14) * 0.05 : 0;
+    const walkBob =
+      !this.settings.reducedMotion && sim.player.grounded && speedMag > 0.4
+        ? Math.sin(elapsedSec * 14) * 0.05
+        : 0;
 
     this.playerGroup.root.position.set(
       sim.player.pos[0],
@@ -497,20 +595,24 @@ export class DaoDenLongClient {
       sim.player.pos[2]
     );
     this.playerGroup.root.rotation.y = sim.player.facingYawRad;
-    this.playerGroup.miniLantern.position.x = Math.sin(elapsedSec * 4.5) * 0.05;
-    this.playerGroup.scarfTail.rotation.x = 0.25 + Math.min(0.9, speedMag * 0.07) + Math.sin(elapsedSec * 10) * 0.08;
+    this.playerGroup.miniLantern.position.x = this.settings.reducedMotion
+      ? 0
+      : Math.sin(elapsedSec * 4.5) * 0.05;
+    this.playerGroup.scarfTail.rotation.x =
+      0.25 +
+      Math.min(0.9, speedMag * 0.07) +
+      (this.settings.reducedMotion ? 0 : Math.sin(elapsedSec * 10) * 0.08);
     this.playerGroup.root.visible =
       sim.player.respawnTicks > 0
         ? false
-        : sim.player.invulnTicks > 0
+        : sim.player.invulnTicks > 0 && !this.settings.reducedMotion
           ? Math.floor(elapsedSec * 16) % 2 === 0
           : true;
 
-    // Dash trail ghosts
     for (let i = 0; i < this.dashTrailMeshes.length; i += 1) {
       const ghost = this.dashTrailMeshes[i];
       const hist = this.dashTrailHistory[i];
-      if (hist && sim.player.dashTicks > 0) {
+      if (hist && sim.player.dashTicks > 0 && !this.settings.reducedMotion) {
         ghost.visible = true;
         ghost.position.set(hist[0], hist[1] + 0.48, hist[2]);
       } else {
@@ -518,8 +620,9 @@ export class DaoDenLongClient {
       }
     }
 
-    // 1 Hz slow blink pulse for low-fuel lanterns (fuel < 30)
-    const blink1Hz = 0.35 + 0.65 * (0.5 + 0.5 * Math.sin(elapsedSec * Math.PI * 2));
+    const blink1Hz = this.settings.reducedMotion
+      ? 0.75
+      : 0.35 + 0.65 * (0.5 + 0.5 * Math.sin(elapsedSec * Math.PI * 2));
     let litCount = 0;
 
     for (const l of sim.lanterns) {
@@ -530,18 +633,18 @@ export class DaoDenLongClient {
       const fuel = l.lit ? l.fuelTicks / TICK_RATE : 0;
       const isLowFuel = l.lit && fuel < sim.tuning.low_fuel_threshold;
 
-      vis.core.rotation.y = elapsedSec * (l.lit ? 1.5 : 0.35);
+      vis.core.rotation.y = elapsedSec * (l.lit ? 1.4 : 0.3);
       if (l.lit) {
-        // Lit lantern: full size, no tear strips, visible 3D fuel bar
         vis.housingGroup.scale.set(1, 1, 1);
         vis.tearStrips.visible = false;
         vis.coreMat.color.setHex(PALETTE.lanternCore);
         vis.coreMat.emissive.setHex(PALETTE.lanternLit);
         const pulseFactor = isLowFuel ? blink1Hz : 1.0;
-        vis.coreMat.emissiveIntensity = (1.9 + Math.sin(elapsedSec * 4) * 0.2) * pulseFactor;
+        vis.coreMat.emissiveIntensity = (1.9 + Math.sin(elapsedSec * 4) * 0.18) * pulseFactor;
         vis.light.intensity = 7.5 * pulseFactor;
+        vis.lightShaft.visible = true;
         vis.safeRing.visible = sim.hasSafeZone(l);
-        vis.safeRing.rotation.z = elapsedSec * 0.4;
+        if (!this.settings.reducedMotion) vis.safeRing.rotation.z = elapsedSec * 0.4;
 
         vis.fuelBarBg.visible = true;
         vis.fuelBarFill.visible = true;
@@ -557,7 +660,6 @@ export class DaoDenLongClient {
         );
         vis.fuelBarMat.opacity = isLowFuel ? blink1Hz : 0.95;
       } else {
-        // Unlit lantern: squashed by 20% + visible torn-paper bands (non-color distinction!)
         vis.housingGroup.scale.set(0.8, 0.8, 0.8);
         vis.tearStrips.visible = true;
         const reqCost = l.ever_lit ? sim.tuning.relight_cost : sim.tuning.lantern_cost;
@@ -566,6 +668,7 @@ export class DaoDenLongClient {
         vis.coreMat.emissive.setHex(PALETTE.lanternLit);
         vis.coreMat.emissiveIntensity = 0.08 + ratio * 0.85;
         vis.light.intensity = ratio * 1.8;
+        vis.lightShaft.visible = false;
         vis.safeRing.visible = false;
         vis.fuelBarBg.visible = false;
         vis.fuelBarFill.visible = false;
@@ -583,7 +686,6 @@ export class DaoDenLongClient {
       if (this.pulseAnimRemaining === 0) this.pulseRing.visible = false;
     }
 
-    // Sync motes
     const activeMotes = new Set<string>();
     for (const m of sim.motes) {
       activeMotes.add(m.id);
@@ -596,11 +698,8 @@ export class DaoDenLongClient {
         this.scene.add(mesh);
         this.moteMeshes.set(m.id, mesh);
       }
-      mesh.position.set(
-        m.pos[0],
-        m.pos[1] + 0.65 + Math.sin(elapsedSec * 3.5 + m.pos[0]) * 0.15,
-        m.pos[2]
-      );
+      const bob = this.settings.reducedMotion ? 0 : Math.sin(elapsedSec * 3.5 + m.pos[0]) * 0.15;
+      mesh.position.set(m.pos[0], m.pos[1] + 0.65 + bob, m.pos[2]);
     }
     for (const [id, mesh] of this.moteMeshes.entries()) {
       if (!activeMotes.has(id)) {
@@ -609,17 +708,15 @@ export class DaoDenLongClient {
       }
     }
 
-    // Sync charms
     for (const c of sim.charms) {
       const mesh = this.charmMeshes.get(c.id);
       if (mesh) {
         mesh.visible = c.available;
-        mesh.rotation.y = elapsedSec * 2.2;
-        mesh.position.y = c.pos[1] + 0.9 + Math.sin(elapsedSec * 3) * 0.15;
+        if (!this.settings.reducedMotion) mesh.rotation.y = elapsedSec * 2.2;
+        mesh.position.y = c.pos[1] + 0.9 + (this.settings.reducedMotion ? 0 : Math.sin(elapsedSec * 3) * 0.15);
       }
     }
 
-    // Sync shades + drain beams + colorblind palette (#00B3FF vs #7A3CFF)
     const rimHex = this.settings.colorblindMode
       ? PALETTE.shadeRimColorblind
       : PALETTE.shadeRimNormal;
@@ -634,12 +731,12 @@ export class DaoDenLongClient {
       }
       vis.group.position.set(
         s.pos[0],
-        s.pos[1] + Math.sin(elapsedSec * 4 + s.pos[0]) * 0.1,
+        s.pos[1] + (this.settings.reducedMotion ? 0 : Math.sin(elapsedSec * 4 + s.pos[0]) * 0.1),
         s.pos[2]
       );
       vis.group.rotation.y =
         s.state === "stunned"
-          ? elapsedSec * 10
+          ? elapsedSec * (this.settings.reducedMotion ? 2 : 10)
           : Math.atan2(sim.player.pos[0] - s.pos[0], sim.player.pos[2] - s.pos[2]);
 
       vis.orbitDrops.forEach((drop, idx) => {
@@ -658,7 +755,6 @@ export class DaoDenLongClient {
         vis.rimMat.emissive.setHex(rimHex);
       }
 
-      // Drain energy siphon beam
       const drainTarget =
         s.state === "drain" ? sim.lanterns.find((l) => l.id === s.targetLanternId) : null;
       if (drainTarget) {
@@ -680,7 +776,6 @@ export class DaoDenLongClient {
       }
     }
 
-    // Sync drifters
     const activeDrifters = new Set<string>();
     for (const d of sim.drifters) {
       if (d.state === "removed") continue;
@@ -706,13 +801,17 @@ export class DaoDenLongClient {
     }
   }
 
-  private updateCamera(): void {
+  private updateCamera(elapsedSec: number): void {
     if (!this.sim) return;
     const p = this.sim.player.pos;
     const theta = (this.camYawDeg * Math.PI) / 180;
     const dist = 11.5;
     const height = 5.8;
-    const tx = p[0] - Math.sin(theta) * dist;
+    const shake =
+      !this.settings.reducedMotion && this.cameraShakeTimer > 0
+        ? Math.sin(elapsedSec * 65) * 0.28
+        : 0;
+    const tx = p[0] - Math.sin(theta) * dist + shake;
     const tz = p[2] - Math.cos(theta) * dist;
     this.camera.position.lerp(new THREE.Vector3(tx, p[1] + height, tz), 0.16);
     this.camera.lookAt(p[0], p[1] + 1.1, p[2]);
@@ -749,7 +848,7 @@ export class DaoDenLongClient {
 
     if (sim.wind.warning) {
       this.hud.windBannerEl.style.display = "block";
-      this.hud.windBannerEl.textContent = `${warnPrefix}Cảnh báo: Gió mạnh sắp thổi!`;
+      this.hud.windBannerEl.textContent = `${warnPrefix}Gió mạnh sắp thổi!`;
     } else if (sim.wind.active) {
       this.hud.windBannerEl.style.display = "block";
       this.hud.windBannerEl.textContent = `${warnPrefix}Gió mạnh (${Math.round(sim.wind.dirDeg)}°)`;
@@ -759,10 +858,25 @@ export class DaoDenLongClient {
 
     const litCount = sim.lanterns.filter((l) => l.lit).length;
     const reqLit = Math.ceil(sim.tuning.win_ratio * sim.lanterns.length);
-    this.hud.lanternsEl.textContent = `${litCount} / ${sim.lanterns.length} (Cần ≥ ${reqLit})`;
+    this.hud.lanternsEl.textContent = `${litCount}/${sim.lanterns.length} (≥ ${reqLit})`;
     this.hud.scoreEl.textContent = String(sim.score);
 
-    // Per-lantern fuel bars on HUD
+    const lowFuelLanterns = sim.lanterns.filter(
+      (l) => l.lit && l.fuelTicks < sim.tuning.low_fuel_threshold * TICK_RATE
+    );
+
+    // Visual subtitle cue (shows active event caption, or persistent low-fuel warning if any lantern < 30)
+    if (this.subtitleTimer > 0 && this.subtitleText) {
+      this.hud.subtitleBannerEl.style.display = "block";
+      this.hud.subtitleBannerEl.textContent = this.subtitleText;
+    } else if (lowFuelLanterns.length > 0) {
+      this.hud.subtitleBannerEl.style.display = "block";
+      const ids = lowFuelLanterns.map((l) => l.id).join(", ");
+      this.hud.subtitleBannerEl.textContent = `⚠ Đèn ${ids} sắp cạn dầu (< 30)!`;
+    } else {
+      this.hud.subtitleBannerEl.style.display = "none";
+    }
+
     this.hud.fuelListEl.innerHTML = sim.lanterns
       .map((l) => {
         const fuel = l.lit ? Math.round(l.fuelTicks / TICK_RATE) : 0;
@@ -785,16 +899,18 @@ export class DaoDenLongClient {
       slots[i].className = i < sim.player.carried ? "mote-slot filled" : "mote-slot";
     }
 
+    const kb = this.settings.keyBindings;
     const nearLantern = sim.findInteractableLantern();
     if (nearLantern) {
       this.hud.interactPromptEl.style.display = "block";
+      const keyLabel = formatKeyLabel(kb.interact);
       if (!nearLantern.lit) {
         const reqCost = nearLantern.ever_lit ? sim.tuning.relight_cost : sim.tuning.lantern_cost;
         const label = nearLantern.ever_lit ? "Thắp lại" : "Nạp ánh sáng";
-        this.hud.interactPromptEl.textContent = `E — ${label} ${nearLantern.id} (${nearLantern.deposited}/${reqCost})`;
+        this.hud.interactPromptEl.textContent = `${keyLabel} — ${label} ${nearLantern.id} (${nearLantern.deposited}/${reqCost})`;
       } else {
         const fuel = Math.round(nearLantern.fuelTicks / TICK_RATE);
-        this.hud.interactPromptEl.textContent = `E — Châm dầu ${nearLantern.id} (Dầu: ${fuel}/100)`;
+        this.hud.interactPromptEl.textContent = `${keyLabel} — Châm dầu ${nearLantern.id} (${fuel}/100)`;
       }
     } else {
       this.hud.interactPromptEl.style.display = "none";
@@ -822,10 +938,9 @@ export class DaoDenLongClient {
       this.hud.cdPulseEl.className = "ability-status cd";
     }
 
-    this.updateOffscreenLanternArrow(sim);
+    this.updateOffscreenArrows(sim);
   }
 
-  /** Renders the 2D circular radar minimap with island contours, lanterns, fuel arcs, motes, shades, and May. */
   private drawMinimap(elapsedSec: number): void {
     if (!this.sim) return;
     const sim = this.sim;
@@ -839,7 +954,6 @@ export class DaoDenLongClient {
     const cy = h * 0.5;
     ctx.clearRect(0, 0, w, h);
 
-    // Map world coordinates to minimap pixels
     const worldCenterX = sim.night === 2 ? 35 : 0;
     const worldScale = sim.night === 2 ? 1.05 : sim.night === 3 ? 1.48 : 1.65;
     const toMap = (wx: number, wz: number): [number, number] => [
@@ -847,9 +961,8 @@ export class DaoDenLongClient {
       cy + wz * worldScale,
     ];
 
-    // Draw island terrain shapes
-    ctx.fillStyle = "rgba(47, 93, 80, 0.55)";
-    ctx.strokeStyle = "rgba(201, 180, 138, 0.65)";
+    ctx.fillStyle = "rgba(47, 93, 80, 0.58)";
+    ctx.strokeStyle = "rgba(201, 180, 138, 0.7)";
     ctx.lineWidth = 1.5;
 
     if (sim.night === 1) {
@@ -876,21 +989,18 @@ export class DaoDenLongClient {
       ctx.arc(cx, cy, 45 * worldScale, 0, Math.PI * 2);
       ctx.fill();
       ctx.stroke();
-      // Tier 1 semi-annulus (z > 0)
       ctx.fillStyle = "rgba(59, 115, 98, 0.65)";
       ctx.beginPath();
       ctx.arc(cx, cy, 24 * worldScale, 0, Math.PI, false);
       ctx.arc(cx, cy, 12 * worldScale, Math.PI, 0, true);
       ctx.closePath();
       ctx.fill();
-      // Tier 2 disc
       ctx.fillStyle = "rgba(201, 180, 138, 0.45)";
       ctx.beginPath();
       ctx.arc(cx, cy, 8 * worldScale, 0, Math.PI * 2);
       ctx.fill();
     }
 
-    // Motes
     ctx.fillStyle = "#FFE58A";
     for (const m of sim.motes) {
       const [mx, mz] = toMap(m.pos[0], m.pos[2]);
@@ -899,7 +1009,6 @@ export class DaoDenLongClient {
       ctx.fill();
     }
 
-    // Charms
     for (const c of sim.charms) {
       if (!c.available) continue;
       const [chx, chz] = toMap(c.pos[0], c.pos[2]);
@@ -907,13 +1016,13 @@ export class DaoDenLongClient {
       ctx.fillRect(chx - 3, chz - 3, 6, 6);
     }
 
-    // Lanterns (distinct square vs circle + fuel arc)
     for (const l of sim.lanterns) {
       const [lx, lz] = toMap(l.pos[0], l.pos[2]);
       if (l.lit) {
         const fuelRatio = l.fuelTicks / (sim.tuning.fuel_max * TICK_RATE);
         const low = fuelRatio < 0.3;
-        const blink = !low || Math.sin(elapsedSec * Math.PI * 2) > -0.2;
+        const blink =
+          !low || this.settings.reducedMotion || Math.sin(elapsedSec * Math.PI * 2) > -0.2;
         if (blink) {
           ctx.fillStyle = low
             ? this.settings.colorblindMode
@@ -936,7 +1045,6 @@ export class DaoDenLongClient {
       }
     }
 
-    // Shades
     const shadeColor = this.settings.colorblindMode ? "#00B3FF" : "#9E6BFF";
     for (const s of sim.shades) {
       const [sx, sz] = toMap(s.pos[0], s.pos[2]);
@@ -946,7 +1054,6 @@ export class DaoDenLongClient {
       ctx.fill();
     }
 
-    // Drifters
     ctx.fillStyle = "#8FA3B8";
     for (const d of sim.drifters) {
       if (d.state === "removed") continue;
@@ -954,7 +1061,6 @@ export class DaoDenLongClient {
       ctx.fillRect(dx - 2.5, dz - 2.5, 5, 5);
     }
 
-    // May (player) directional marker
     const [px, pz] = toMap(sim.player.pos[0], sim.player.pos[2]);
     ctx.save();
     ctx.translate(px, pz);
@@ -969,33 +1075,41 @@ export class DaoDenLongClient {
     ctx.restore();
   }
 
-  private updateOffscreenLanternArrow(sim: GameSimulation): void {
-    // Point to nearest lantern that needs attention (unlit or low fuel < 30)
+  private updateOffscreenArrows(sim: GameSimulation): void {
+    // 1. Nearest urgent lantern arrow
     const urgent = sim.lanterns.filter(
       (l) => !l.lit || l.fuelTicks < sim.tuning.low_fuel_threshold * TICK_RATE
     );
-    if (urgent.length === 0) {
-      this.hud.lanternArrowEl.style.display = "none";
-      return;
-    }
-
-    let nearest = urgent[0];
-    let bestDist = Infinity;
-    for (const l of urgent) {
-      const d = Math.hypot(l.pos[0] - sim.player.pos[0], l.pos[2] - sim.player.pos[2]);
-      if (d < bestDist) {
-        bestDist = d;
-        nearest = l;
+    if (urgent.length > 0) {
+      let nearest = urgent[0];
+      let bestDist = Infinity;
+      for (const l of urgent) {
+        const d = Math.hypot(l.pos[0] - sim.player.pos[0], l.pos[2] - sim.player.pos[2]);
+        if (d < bestDist) {
+          bestDist = d;
+          nearest = l;
+        }
       }
+      this.placeEdgeArrow(this.hud.lanternArrowEl, [nearest.pos[0], nearest.pos[1] + 2.2, nearest.pos[2]]);
+    } else {
+      this.hud.lanternArrowEl.style.display = "none";
     }
 
-    const worldPos = new THREE.Vector3(nearest.pos[0], nearest.pos[1] + 2.2, nearest.pos[2]);
+    // 2. Newly spawned Shade directional edge arrow (accessibility visual cue)
+    if (this.recentShadeArrowTimer > 0 && this.recentShadePos) {
+      this.placeEdgeArrow(this.hud.shadeArrowEl, this.recentShadePos, true);
+    } else {
+      this.hud.shadeArrowEl.style.display = "none";
+    }
+  }
+
+  private placeEdgeArrow(el: HTMLElement, target: [number, number, number], alwaysShow = false): void {
+    const worldPos = new THREE.Vector3(target[0], target[1], target[2]);
     const proj = worldPos.project(this.camera);
     const inFront = proj.z < 1;
-    const onScreen = inFront && Math.abs(proj.x) <= 0.92 && Math.abs(proj.y) <= 0.88;
-
-    if (onScreen) {
-      this.hud.lanternArrowEl.style.display = "none";
+    const onScreen = inFront && Math.abs(proj.x) <= 0.9 && Math.abs(proj.y) <= 0.86;
+    if (onScreen && !alwaysShow) {
+      el.style.display = "none";
       return;
     }
 
@@ -1011,16 +1125,25 @@ export class DaoDenLongClient {
 
     const w = this.container.clientWidth;
     const h = this.container.clientHeight;
-    const margin = 44;
+    const margin = 48;
     const sx = w * 0.5 + nx * (w * 0.5 - margin);
     const sy = h * 0.5 - ny * (h * 0.5 - margin);
     const angleDeg = (Math.atan2(nx, ny) * 180) / Math.PI;
 
-    this.hud.lanternArrowEl.style.display = "block";
-    this.hud.lanternArrowEl.style.left = `${sx - 18}px`;
-    this.hud.lanternArrowEl.style.top = `${sy - 18}px`;
-    this.hud.lanternArrowEl.style.transform = `rotate(${angleDeg}deg)`;
+    el.style.display = "block";
+    el.style.left = `${sx - 18}px`;
+    el.style.top = `${sy - 18}px`;
+    el.style.transform = `rotate(${angleDeg}deg)`;
   }
+}
+
+export function formatKeyLabel(code: string): string {
+  if (code.startsWith("Key")) return code.slice(3);
+  if (code.startsWith("Digit")) return code.slice(5);
+  if (code === "Space") return "Space";
+  if (code === "ShiftLeft" || code === "ShiftRight") return "Shift";
+  if (code === "Escape") return "Esc";
+  return code;
 }
 
 function buildMayMesh(): {
@@ -1104,7 +1227,6 @@ function buildLanternVisual(safeRadius: number): LanternVisual {
   const core = new THREE.Mesh(new THREE.OctahedronGeometry(0.52, 0), coreMat);
   housingGroup.add(core);
 
-  // Dark diagonal torn-paper strips on unlit lantern (non-color distinction)
   const tearStrips = new THREE.Group();
   const stripMat = new THREE.MeshBasicMaterial({ color: 0x1b1e28 });
   for (let i = 0; i < 2; i += 1) {
@@ -1122,7 +1244,21 @@ function buildLanternVisual(safeRadius: number): LanternVisual {
   roof.position.y = 0.52;
   housingGroup.add(roof);
 
-  // Floating 3D Fuel Gauge above lantern roof
+  // Soft volumetric-style golden light shaft cone
+  const lightShaft = new THREE.Mesh(
+    new THREE.ConeGeometry(3.2, 5.2, 16, 1, true),
+    new THREE.MeshBasicMaterial({
+      color: PALETTE.lanternLit,
+      transparent: true,
+      opacity: 0.09,
+      side: THREE.DoubleSide,
+      depthWrite: false,
+    })
+  );
+  lightShaft.position.y = 2.5;
+  lightShaft.visible = false;
+  group.add(lightShaft);
+
   const fuelBarBg = new THREE.Mesh(
     new THREE.BoxGeometry(1.26, 0.16, 0.08),
     new THREE.MeshBasicMaterial({ color: 0x121629 })
@@ -1167,6 +1303,7 @@ function buildLanternVisual(safeRadius: number): LanternVisual {
     fuelBarFill,
     fuelBarMat,
     light,
+    lightShaft,
     safeRing,
   };
 }
