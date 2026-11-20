@@ -1,5 +1,48 @@
 # Day 12 — AI SDLC: Đảo Đèn Lồng
 
+- **Sinh viên:** Vũ Trí Dũng — **MSSV:** `2A202603478` — **Lớp:** `K5-L3A`
+- **Repository:** [K5-L3A-DAY12-VuTriDung-2A202603478-AI-SDLC-Dao-Den-Long](https://github.com/VuTriDung1123/K5-L3A-DAY12-VuTriDung-2A202603478-AI-SDLC-Dao-Den-Long)
+- **Trạng thái hiện tại:** Checkpoint 0 — Chuẩn bị môi trường (Hello 3D + Hello Headless)
+- **Công nghệ:** TypeScript + Three.js + Vite (3D WebGL) + Node.js `>=20` (Headless CLI) + Vitest
+
+## Cài đặt và chạy nhanh (tối đa 3 lệnh)
+
+```bash
+npm ci
+npm run build
+npm run dev
+```
+
+Mở trình duyệt tại URL do Vite hiển thị (mặc định `http://localhost:5173`) để xem màn hình thử **Hello 3D**.
+
+### Chạy kiểm thử và chế độ Headless
+
+```bash
+# Chạy unit test
+npm test
+
+# Chạy chế độ headless tất định (không cần giao diện đồ họa)
+npm run headless -- --seed 42 --steps 5
+
+# Chạy kiểm tra tổng hợp (test + typecheck + build headless/3D + kiểm tra tất định)
+npm run verify
+```
+
+## Cấu trúc dự án & Tài liệu
+
+- `src/core/`: Logic mô phỏng thuần TypeScript, tất định, không phụ thuộc trình duyệt hay Three.js (được khóa biên dịch bởi `tsconfig.headless.json`).
+- `src/headless/`: CLI chạy không giao diện (`Node.js`).
+- `src/render/`: Hiển thị 3D bằng Three.js (`src/main.ts` -> `index.html`).
+- `tests/`: Unit tests (`Vitest`).
+- `AGENTS.md` & `.agents/skills/`: Harness AI cho dự án.
+- `docs/notes/`: [assumptions.md](docs/notes/assumptions.md), [ai-log.md](docs/notes/ai-log.md), [retro.md](docs/notes/retro.md).
+- `docs/proof/`: Bằng chứng kiểm chứng từng phase ([phase-0.md](docs/proof/phase-0.md)).
+- [CREDITS.md](CREDITS.md) · [LICENSE](LICENSE) · [CHANGELOG.md](CHANGELOG.md)
+
+---
+
+## Thông tin & Tài liệu gốc của Lab
+
 > **Cá nhân** (1 người / 1 MSSV) · Áp dụng SDLC cùng AI để xây một **game 3D** qua **4 phase**, từ yêu cầu ban đầu tới bản phát hành.
 > **Lab board + trợ giảng:** **[Đảo Đèn Lồng Lab](https://claude.ai/artifact/Q1RYyv1dxjUczzCbd2ZnoW)**
 
