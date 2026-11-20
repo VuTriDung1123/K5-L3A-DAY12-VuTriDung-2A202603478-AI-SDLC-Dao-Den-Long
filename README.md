@@ -1,10 +1,11 @@
-# Đảo Đèn Lồng — Day 12 AI SDLC
+# Đảo Đèn Lồng — Ba Hòn Đảo (Day 12 AI SDLC)
 
 - **Sinh viên:** Vũ Trí Dũng — **MSSV:** `2A202603478` — **Lớp:** `K5-L3A`
 - **Repository:** [K5-L3A-DAY12-VuTriDung-2A202603478-AI-SDLC-Dao-Den-Long](https://github.com/VuTriDung1123/K5-L3A-DAY12-VuTriDung-2A202603478-AI-SDLC-Dao-Den-Long)
+- **Contract:** Test Contract `v1.1` ([game.contract.json](game.contract.json))
 - **Công nghệ:** TypeScript + Three.js + Vite (3D WebGL) + Node.js `>=20` (Headless CLI) + Vitest
 
-> Điều khiển **Mây**, người giữ đèn nhỏ tuổi đội nón lá có treo đèn lồng mini, thu thập **đom đóm** quanh Đảo Bến để thắp sáng **5 Đèn Lồng Lớn** trước bình minh, né hoặc dùng **Tỏa sáng** để xua **Bóng Mực** trong sương đêm.
+> Điều khiển **Mây** vượt qua **3 Đêm** (*Đảo Bến*, *Đảo Cau*, *Đảo Chuông*), gom đom đóm thắp sáng các Đèn Lồng Lớn, tận dụng bục nhảy, Bùa Gió, dùng **Lướt** và **Tỏa Sáng** để đối phó Bóng Mực, Gió Lạc và gió bão trước bình minh.
 
 ---
 
@@ -16,7 +17,7 @@ npm run build
 npm run dev
 ```
 
-Mở URL Vite hiển thị (mặc định `http://localhost:5173`) để chơi **Đêm 1 – Đảo Bến** trên trình duyệt.
+Mở URL Vite hiển thị (mặc định `http://localhost:5173`) để vào Menu chính và chơi đủ 3 Đêm.
 
 ---
 
@@ -24,39 +25,41 @@ Mở URL Vite hiển thị (mặc định `http://localhost:5173`) để chơi *
 
 | Phím / Thao tác | Hành động |
 |---|---|
-| `W A S D` hoặc `↑ ↓ ← →` | Di chuyển theo hướng camera |
-| `Space` | Nhảy |
-| `E` hoặc `F` | Nạp đom đóm vào Đèn Lồng Lớn ở gần (`<= 2.5 m`) |
-| `Q` hoặc `Shift` | **Tỏa sáng** (tốn `1` đom đóm, đẩy lùi và làm choáng Bóng Mực trong `6 m`) |
+| `W A S D` hoặc `↑ ↓ ← →` | Di chuyển theo hướng camera (`6.0 m/s`, `7.2 m/s` khi có Bùa Gió) |
+| `Space` | Nhảy (`7.0 m/s`) |
+| `Shift` | **Lướt (Dash)** `14 m/s` trong `0.2 s` (hồi chiêu `1.5 s`, giữ nguyên độ cao trên không) |
+| `E` hoặc `F` | Nạp đom đóm vào Đèn Lồng Lớn ở gần (`<= 2.0 m`, cần `10` đom đóm/đèn) |
+| `Q` | **Tỏa Sáng** (tốn `3` đom đóm, bán kính 3D `5 m`, choáng `2 s` + đẩy lùi `4 m`, hồi chiêu `3 s`) |
 | Kéo chuột hoặc `J` / `L` (`C`: đưa về sau) | Xoay góc nhìn camera 3D |
-| `M` | Bật / tắt âm thanh |
-| `R` | Chơi lại Đêm 1 |
+| `Esc` hoặc `P` | Tạm dừng / Mở menu tạm dừng |
 
 ---
 
-## Luật chơi, Tính điểm & Giải thích `game.contract.json`
+## Luật chơi chuẩn hóa & Tính điểm (v1.1)
 
-- **Mục tiêu:** Thắp đủ `5` Đèn Lồng Lớn (`3` đom đóm mỗi đèn, hỗ trợ nạp từng phần). Giữ tối đa `5` đom đóm cùng lúc (`carry_capacity = 5`).
-- **Máu & An toàn:** Mây có `3` ngọn lửa (`flames = 3`). Bóng Mực không thể vào vùng bán kính `safe_radius = 5 m` quanh Đèn Lồng đã thắp sáng. Khi bị Bóng Mực chạm, mất `1` ngọn lửa, rơi `floor(carried * 0.5)` đom đóm (`hit_drop_ratio = 0.5`), và bất tử tạm thời `1.5 s`.
-- **`fall_enabled: false`:** Đảo Bến có giới hạn biên vô hình tròn bán kính `35 m` để giữ người chơi trên đảo, không có cơ chế rơi xuống vực nên không phát sinh sự kiện `"fall"`.
+- **3 Đêm liên hoàn:**
+  - **Đêm 1 — Đảo Bến** (`300 s`): Đảo tròn bán kính `40 m`, `5` Đèn Lồng Lớn.
+  - **Đêm 2 — Đảo Cau** (`330 s`): 2 đảo nối bằng cầu tre & `2` bục nhảy, `6` Đèn Lồng, Bùa Gió ở giữa cầu, xuất hiện **Gió Lạc**.
+  - **Đêm 3 — Đảo Chuông** (`360 s`): Đảo `3` tầng, `2` dốc thẳng `30°`/`150°`, bục nhảy lên tầng 2, tháp chuông trung tâm, `7` Đèn Lồng, `2` Bùa Gió và **Gió mạnh** định kỳ mỗi `30 s`.
+- **Rơi khỏi đảo (`fall_enabled: true`, `Y < -10`):** Mất `1` Ngọn Lửa, mất toàn bộ đom đóm đang mang, chờ `60` tick rồi hồi sinh tại `(0,0,0)` với `90` tick bất tử (thua ngay nếu hết Ngọn Lửa).
 - **Cách tính điểm:**
-  - Nhặt `1` đom đóm: `+10` điểm (`per_mote`)
+  - Nạp `1` đom đóm vào đèn: `+10` điểm (`per_mote`)
   - Thắp sáng `1` Đèn Lồng Lớn: `+100` điểm (`per_lantern`)
-  - Làm choáng `1` Bóng Mực bằng Tỏa sáng: `+25` điểm (`per_stun`)
-  - Khi **thắng** (`all_lit`): cộng thêm `floor(time_left_s) * 5` (`per_second_left`) + `flames * 50` (`per_flame_left`).
+  - Bóng Mực trúng Tỏa Sáng: `+5` điểm (`per_stun`, tính mỗi con mỗi lần kể cả đang choáng)
+  - Khi **thắng** Đêm: `+ floor(giây còn lại) * 2` (`per_second_left`) `+ Ngọn Lửa còn lại * 50` (`per_flame_left`).
 
 ---
 
-## Kiểm thử & Chế độ Headless (Test Contract v1.0)
+## Kiểm thử & Chế độ Headless (Test Contract v1.1)
 
 ```bash
-# Chạy unit test & contract sync test
+# Chạy toàn bộ unit, contract sync, regression và feature tests
 npm test
 
-# Chạy chế độ headless trực tiếp theo Test Contract v1.0
-node dist-headless/headless/cli.js --seed 42 --night 1 --ticks 300 --out out.jsonl --snapshot-every 10
+# Chạy chế độ headless (nhận --night 1 | 2 | 3)
+node dist-headless/headless/cli.js --seed 42 --night 3 --ticks 300 --out out.jsonl --snapshot-every 10
 
-# Chạy kiểm chứng tổng hợp (test + typecheck boundary + build 3D/headless + kiểm tra tất định)
+# Chạy kiểm chứng tổng hợp (test + build + tất định 3 Đêm + benchmark 21.600 tick)
 npm run verify
 ```
 
@@ -64,19 +67,18 @@ npm run verify
 
 ## Sáng tạo của tôi
 
-1. **Âm thanh cổ tích tổng hợp hoàn toàn bằng Web Audio (`src/render/audio.ts`):** Không dùng file âm thanh ngoài; tự tổng hợp tiếng chuông nhặt đom đóm, hợp âm thắp sáng đèn, sóng âm Tỏa sáng, và nhạc thắng/thua (tắt/bật bằng `M`).
-2. **Không khí Đảo Bến & Bầu trời chuyển sắc (`src/render/worldDecor.ts`, `src/render/gameScene.ts`):** Cổng bến tàu gỗ với 2 đèn lồng đón khách, vòng hoa đăng trôi trên biển mây ngoài đảo, vòng sáng vùng an toàn quanh đèn đã thắp, và bầu trời/sương đêm ấm dần lên theo số đèn đã thắp (`0/5` -> `5/5`).
-3. **Cách ly tuyệt đối khỏi Test Contract:** Toàn bộ phần sáng tạo chỉ nằm trong `src/render/` và **không được import** từ `src/core/` hoặc `src/headless/` (ép ở mức compile bằng `tsconfig.headless.json`). Đã kiểm chứng tính tất định và giữ nguyên output headless theo contract tại [docs/proof/phase-1.md](docs/proof/phase-1.md).
+1. **Âm thanh cổ tích tổng hợp hoàn toàn bằng Web Audio (`src/render/audio.ts`):** Nhạc nền ngũ cung ban đêm và bộ hiệu ứng cho tất cả các sự kiện (nhặt, nạp/thắp đèn, nhảy, lướt, tỏa sáng, bị đánh, Bóng Mực xuất hiện, đếm ngược `10 s` cuối, cảnh báo gió, thắng/thua) điều chỉnh âm lượng qua menu Cài đặt (`localStorage`), không dùng file âm thanh ngoài.
+2. **Chi tiết cảnh quan 3 Đảo (`src/render/worldDecor.ts`):** Bến tàu Đảo Bến, rặng cau và cầu tre Đảo Cau, trụ đỡ đá thanh mảnh và chuông vàng trên tháp Đảo Chuông cùng hoa đăng trôi trên biển mây và hạt lá bay theo hướng gió.
+3. **Cô lập tuyệt đối khỏi Test Contract:** Toàn bộ sáng tạo chỉ nằm trong `src/render/`, không ảnh hưởng đầu ra headless theo Contract v1.1 (đã kiểm tra ranh giới biên dịch qua `tsconfig.headless.json` và regression test tại [docs/proof/phase-2.md](docs/proof/phase-2.md)).
 
 ---
 
 ## Tài liệu & Ghi chép SDLC
 
-- [game.contract.json](game.contract.json): Khai báo Test Contract v1.0 và thông số `tuning` đồng bộ tự động với `src/core/config.ts`.
+- [game.contract.json](game.contract.json): Test Contract `v1.1` đồng bộ tự động với `DEFAULT_TUNING`.
 - [AGENTS.md](AGENTS.md) & [.agents/skills/verify-and-proof/SKILL.md](.agents/skills/verify-and-proof/SKILL.md): Harness AI của dự án.
-- [docs/notes/assumptions.md](docs/notes/assumptions.md): Yêu cầu bắt buộc, giả định, và kế hoạch kiểm chứng từng phase.
-- [docs/notes/ai-log.md](docs/notes/ai-log.md): Nhật ký dùng AI, lỗi AI phát hiện được & token ước tính.
-- [docs/proof/phase-0.md](docs/proof/phase-0.md), [docs/proof/phase-1.md](docs/proof/phase-1.md): Bằng chứng kiểm chứng từng phase.
+- [docs/notes/spec-phase-2.md](docs/notes/spec-phase-2.md), [docs/notes/assumptions.md](docs/notes/assumptions.md), [docs/notes/ai-log.md](docs/notes/ai-log.md), [docs/notes/retro.md](docs/notes/retro.md).
+- [docs/proof/phase-0.md](docs/proof/phase-0.md), [docs/proof/phase-1.md](docs/proof/phase-1.md), [docs/proof/phase-2.md](docs/proof/phase-2.md).
 - [CREDITS.md](CREDITS.md) · [LICENSE](LICENSE) · [CHANGELOG.md](CHANGELOG.md)
 
 ---

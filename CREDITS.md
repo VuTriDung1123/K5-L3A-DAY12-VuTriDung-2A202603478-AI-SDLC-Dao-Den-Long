@@ -15,7 +15,7 @@
 
 ## Asset & Âm thanh tự tạo / bên ngoài
 
-- **Phase 1:** Toàn bộ hình khối 3D (Mây đội nón lá có đèn lồng nhỏ, Đảo Bến, bến tàu gỗ, 5 Đèn Lồng Lớn, đom đóm, Bóng Mực, hoa đăng trôi trên biển mây) được dựng 100% bằng primitive Three.js trong mã nguồn; âm thanh được tổng hợp trực tiếp bằng Web Audio API (`src/render/audio.ts`). Không dùng asset bên ngoài.
+- **Phase 2:** Mô hình 3 hòn đảo (Đảo Bến, Đảo Cau, Đảo Chuông), Mây (áo `#E8E2D0`, khăn `#C8102E`, nón lá), Gió Lạc, Bùa Gió, tháp chuông dựng hoàn toàn bằng primitive Three.js trong mã nguồn; nhạc nền ngũ cung và toàn bộ hiệu ứng âm thanh được tổng hợp bằng Web Audio API (`src/render/audio.ts`). Không dùng asset bên ngoài.
 
 ## Công cụ AI hỗ trợ
 
