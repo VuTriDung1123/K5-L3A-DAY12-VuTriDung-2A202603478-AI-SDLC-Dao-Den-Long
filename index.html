@@ -3,18 +3,21 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Đảo Đèn Lồng — Ba Hòn Đảo</title>
+    <title>Đảo Đèn Lồng — Đèn Cạn Dầu</title>
     <style>
       :root {
         --sky: #0e1430;
         --panel: rgba(14, 20, 48, 0.86);
-        --border: rgba(242, 193, 78, 0.42);
+        --border: rgba(242, 193, 78, 0.48);
         --gold: #f2c14e;
         --amber: #ffb347;
         --danger: #ff5a5f;
         --text: #f5f1e6;
         --crimson: #c8102e;
         --drifter: #8fa3b8;
+      }
+      body.colorblind {
+        --danger: #ffffff;
       }
       * {
         box-sizing: border-box;
@@ -43,9 +46,9 @@
         position: fixed;
         background: var(--panel);
         border: 1px solid var(--border);
-        border-radius: 12px;
-        backdrop-filter: blur(6px);
-        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+        border-radius: 14px;
+        backdrop-filter: blur(8px);
+        box-shadow: 0 10px 28px rgba(0, 0, 0, 0.52);
       }
       #hud-root {
         display: none;
@@ -53,50 +56,81 @@
       #hud-root.active {
         display: block;
       }
-      /* Top-Left: Flames & Charm */
+      /* Top-Left: Flames, Capacity & Charm */
       #hud-flames {
-        top: 16px;
-        left: 16px;
+        top: 14px;
+        left: 14px;
         padding: 10px 16px;
         pointer-events: none;
+        min-width: 195px;
       }
       .flames-row {
         display: flex;
         align-items: center;
         gap: 8px;
-        font-size: 20px;
+        font-size: 21px;
       }
       .flame-icon {
         color: var(--amber);
-        filter: drop-shadow(0 0 6px rgba(255, 179, 71, 0.7));
+        filter: drop-shadow(0 0 6px rgba(255, 179, 71, 0.8));
       }
       .flame-icon.lost {
         color: #5b5f6e;
         filter: none;
-        opacity: 0.45;
+        opacity: 0.4;
+      }
+      #cap-readout {
+        margin-top: 4px;
+        font-size: 13px;
+        font-weight: 700;
+        color: var(--gold);
       }
       #charm-badge {
         margin-top: 6px;
         font-size: 12px;
         font-weight: 700;
         color: var(--gold);
-        background: rgba(200, 16, 46, 0.35);
+        background: rgba(200, 16, 46, 0.4);
         border: 1px solid var(--gold);
         border-radius: 6px;
         padding: 3px 8px;
         display: none;
       }
-      /* Top-Center: Clock mm:ss + Wind alert */
+      /* Bottom-Left: Radar Minimap */
+      #hud-minimap {
+        bottom: 16px;
+        left: 14px;
+        padding: 10px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 4px;
+        pointer-events: none;
+      }
+      #minimap-canvas {
+        width: 156px;
+        height: 156px;
+        border-radius: 50%;
+        border: 1.5px solid var(--gold);
+        background: rgba(8, 12, 28, 0.9);
+      }
+      .minimap-caption {
+        font-size: 11px;
+        color: var(--gold);
+        font-weight: 700;
+        letter-spacing: 0.4px;
+      }
+      /* Top-Center: Clock mm:ss + Wind/Fuel alert */
       #hud-clock {
-        top: 16px;
+        top: 14px;
         left: 50%;
         transform: translateX(-50%);
-        padding: 8px 20px;
+        padding: 8px 22px;
         text-align: center;
         pointer-events: none;
       }
       #clock-text {
-        font-size: 24px;
+        font-size: 25px;
         font-weight: 800;
         font-variant-numeric: tabular-nums;
         letter-spacing: 1px;
@@ -107,26 +141,32 @@
       }
       @keyframes blink {
         0%, 100% { opacity: 1; }
-        50% { opacity: 0.35; }
+        50% { opacity: 0.25; }
+      }
+      @keyframes blink1hz {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.22; }
       }
       #night-label {
         font-size: 12px;
         color: var(--gold);
+        font-weight: 700;
       }
       #wind-banner {
         margin-top: 4px;
         font-size: 12px;
         font-weight: 700;
-        color: var(--drifter);
+        color: var(--danger);
         display: none;
       }
-      /* Top-Right: Lanterns & Score */
+      /* Top-Right: Lanterns, Fuel Status Bars & Score */
       #hud-score {
-        top: 16px;
-        right: 16px;
+        top: 14px;
+        right: 14px;
         padding: 10px 16px;
         text-align: right;
-        min-width: 170px;
+        min-width: 220px;
+        pointer-events: none;
       }
       .score-num {
         font-size: 20px;
@@ -135,14 +175,49 @@
         font-variant-numeric: tabular-nums;
       }
       .lantern-num {
-        font-size: 14px;
+        font-size: 13px;
         font-weight: 700;
         color: var(--amber);
       }
-      /* Bottom-Center: 10-slot Mote bar + Interact Prompt */
+      #lantern-fuel-list {
+        margin-top: 8px;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+      .fuel-row {
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 6px;
+        font-size: 11px;
+        font-variant-numeric: tabular-nums;
+      }
+      .fuel-row.low {
+        color: var(--danger);
+        animation: blink1hz 1s infinite;
+        font-weight: 700;
+      }
+      .fuel-track {
+        width: 78px;
+        height: 7px;
+        background: rgba(255, 255, 255, 0.12);
+        border-radius: 4px;
+        overflow: hidden;
+        border: 1px solid rgba(242, 193, 78, 0.35);
+      }
+      .fuel-fill {
+        height: 100%;
+        background: linear-gradient(90deg, #ff8f2f, #ffe58a);
+        transition: width 0.1s linear;
+      }
+      .fuel-row.low .fuel-fill {
+        background: var(--danger);
+      }
+      /* Bottom-Center: Dynamic Mote bar (10..20 slots) + Interact Prompt */
       #hud-bottom {
         position: fixed;
-        bottom: 18px;
+        bottom: 16px;
         left: 50%;
         transform: translateX(-50%);
         display: flex;
@@ -163,12 +238,15 @@
       }
       #mote-bar {
         display: flex;
-        gap: 6px;
+        flex-wrap: wrap;
+        justify-content: center;
+        max-width: 340px;
+        gap: 5px;
         padding: 8px 12px;
       }
       .mote-slot {
-        width: 20px;
-        height: 20px;
+        width: 18px;
+        height: 18px;
         border-radius: 50%;
         border: 1.5px solid rgba(255, 229, 138, 0.38);
         background: rgba(255, 255, 255, 0.05);
@@ -176,12 +254,12 @@
       .mote-slot.filled {
         background: radial-gradient(circle, #fff6c2 30%, #ffe58a 85%);
         border-color: var(--gold);
-        box-shadow: 0 0 10px rgba(255, 229, 138, 0.75);
+        box-shadow: 0 0 9px rgba(255, 229, 138, 0.8);
       }
       /* Bottom-Right: Cooldown badges */
       #hud-abilities {
-        bottom: 18px;
-        right: 16px;
+        bottom: 16px;
+        right: 14px;
         padding: 10px 14px;
         display: flex;
         gap: 12px;
@@ -189,12 +267,12 @@
       }
       .ability-box {
         text-align: center;
-        min-width: 84px;
+        min-width: 88px;
       }
       .ability-title {
         font-size: 11px;
         color: var(--text);
-        opacity: 0.85;
+        opacity: 0.88;
       }
       .ability-status {
         font-size: 13px;
@@ -208,8 +286,8 @@
       /* Offscreen lantern indicator arrow */
       #lantern-arrow {
         position: fixed;
-        width: 34px;
-        height: 34px;
+        width: 36px;
+        height: 36px;
         pointer-events: none;
         display: none;
         z-index: 10;
@@ -234,14 +312,14 @@
         display: flex;
       }
       .screen-overlay.dawn {
-        background: linear-gradient(180deg, rgba(255, 179, 71, 0.35), rgba(27, 35, 80, 0.92));
+        background: linear-gradient(180deg, rgba(255, 179, 71, 0.38), rgba(27, 35, 80, 0.92));
       }
       .modal-card {
         background: rgba(14, 20, 48, 0.96);
         border: 1.5px solid var(--gold);
         border-radius: 16px;
         padding: 26px 32px;
-        width: min(490px, 92vw);
+        width: min(500px, 92vw);
         text-align: center;
         box-shadow: 0 24px 60px rgba(0, 0, 0, 0.7);
       }
@@ -312,6 +390,12 @@
         width: 180px;
         accent-color: var(--gold);
       }
+      .setting-row input[type="checkbox"] {
+        width: 18px;
+        height: 18px;
+        accent-color: var(--gold);
+        cursor: pointer;
+      }
       .breakdown {
         text-align: left;
         background: rgba(255, 255, 255, 0.05);
@@ -341,19 +425,26 @@
     <div id="hud-root">
       <div id="hud-flames" class="hud-card">
         <div class="flames-row" id="flames-icons"></div>
+        <div id="cap-readout">Túi đom đóm: 0 / 10</div>
         <div id="charm-badge">Bùa Gió: 10.0s</div>
+      </div>
+
+      <div id="hud-minimap" class="hud-card">
+        <canvas id="minimap-canvas" width="160" height="160"></canvas>
+        <div class="minimap-caption">Bản đồ Đảo · Chấm vàng: Đom đóm</div>
       </div>
 
       <div id="hud-clock" class="hud-card">
         <div id="night-label">Đêm 1 · Đảo Bến</div>
-        <div id="clock-text">05:00</div>
+        <div id="clock-text">04:00</div>
         <div id="wind-banner">Gió mạnh sắp tới!</div>
       </div>
 
       <div id="hud-score" class="hud-card">
-        <div class="lantern-num">Đèn: <span id="stat-lanterns">0 / 5</span></div>
+        <div class="lantern-num">Đèn sáng: <span id="stat-lanterns">0 / 5 (Cần ≥ 3)</span></div>
         <div class="score-num">Điểm: <span id="stat-score">0</span></div>
-        <div style="font-size: 11px; opacity: 0.75; margin-top: 4px;">[Esc / P] Tạm dừng</div>
+        <div id="lantern-fuel-list"></div>
+        <div style="font-size: 11px; opacity: 0.75; margin-top: 6px;">[Esc / P] Tạm dừng</div>
       </div>
 
       <div id="hud-bottom">
@@ -383,7 +474,7 @@
     <div id="screen-menu" class="screen-overlay visible">
       <div class="modal-card">
         <h1>Đảo Đèn Lồng</h1>
-        <p>Ba hòn đảo giữa biển mây đêm — Thu thập đom đóm, né Bóng Mực và Gió Lạc, thắp sáng lại cả ba hòn đảo trước bình minh.</p>
+        <p>Giữ các Đèn Lồng Lớn cháy sáng tới tận Bình Minh! Đèn đang sáng sẽ cạn dần dầu và bị Bóng Mực hút dầu khi yếu (&lt; 30) — hãy châm dầu và thắp lại kịp thời.</p>
         <div class="btn-stack">
           <button class="primary-btn" id="btn-start-campaign" type="button">Bắt đầu hành trình (Đêm 1 → 3)</button>
           <div class="btn-row">
@@ -391,10 +482,10 @@
             <button class="secondary-btn" id="btn-pick-2" type="button">Đêm 2: Đảo Cau</button>
             <button class="secondary-btn" id="btn-pick-3" type="button">Đêm 3: Đảo Chuông</button>
           </div>
-          <button class="secondary-btn" id="btn-open-settings-menu" type="button">Cài đặt</button>
+          <button class="secondary-btn" id="btn-open-settings-menu" type="button">Cài đặt & Chế độ Mù màu</button>
         </div>
-        <p style="font-size: 12px; opacity: 0.75; margin-top: 14px; margin-bottom: 0;">
-          WASD/Mũi tên: Di chuyển · Space: Nhảy · Shift: Lướt · E: Nạp đèn · Q: Tỏa Sáng · Chuột/J,L: Xoay camera
+        <p style="font-size: 12px; opacity: 0.78; margin-top: 14px; margin-bottom: 0;">
+          WASD/Mũi tên: Di chuyển · Space: Nhảy · Shift: Lướt · E: Thắp/Châm dầu · Q: Tỏa Sáng · Chuột/J,L: Xoay camera
         </p>
       </div>
     </div>
@@ -404,7 +495,7 @@
       <div class="modal-card">
         <h2 id="intro-title">Đêm 1 — Đảo Bến</h2>
         <div class="quote-box" id="intro-quote"></div>
-        <button class="primary-btn" id="btn-begin-night" type="button">Thắp đèn lên đường</button>
+        <button class="primary-btn" id="btn-begin-night" type="button">Thắp đèn giữ đảo tới Bình Minh</button>
       </div>
     </div>
 
@@ -433,6 +524,10 @@
           <label for="opt-sens">Độ nhạy chuột (<span id="lbl-sens">1.0</span>)</label>
           <input id="opt-sens" type="range" min="0.2" max="2.5" step="0.1" value="1.0" />
         </div>
+        <div class="setting-row">
+          <label for="opt-colorblind">Bảng màu dễ phân biệt (Mù màu)</label>
+          <input id="opt-colorblind" type="checkbox" />
+        </div>
         <button class="primary-btn" id="btn-close-settings" type="button">Lưu & Quay lại</button>
       </div>
     </div>
@@ -440,7 +535,7 @@
     <!-- Night Result / Dawn Victory Overlay -->
     <div id="screen-result" class="screen-overlay">
       <div class="modal-card">
-        <h2 id="result-title">Hoàn thành Đêm!</h2>
+        <h2 id="result-title">Bình Minh đã lên!</h2>
         <p id="result-subtitle"></p>
         <div class="breakdown" id="result-breakdown"></div>
         <div class="btn-row">

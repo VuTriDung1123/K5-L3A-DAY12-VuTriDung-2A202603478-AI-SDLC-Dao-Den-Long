@@ -5,26 +5,26 @@ const SETTINGS_STORAGE_KEY = "dao-den-long-settings";
 
 const NIGHT_INTROS: Record<NightNumber, { title: string; quote: string }> = {
   1: {
-    title: "Đêm 1 — Đảo Bến",
+    title: "Đêm 1 — Đảo Bến (Cần giữ ≥ 3/5 đèn tới Bình Minh)",
     quote:
-      "Ông Đăng: \"Đêm đầu tiên sương còn mỏng, con hãy gom đủ đom đóm thắp lại 5 ngọn đèn bến tàu. Đừng quên nhấn Q tỏa sáng khi Bóng Mực áp sát!\"",
+      "Ông Đăng: \"Đèn thắp rồi vẫn cạn dần dầu, và khi dầu dưới 30 thì Bóng Mực sẽ lao vào hút! Hãy châm thêm dầu bằng phím E và giữ ít nhất 3 ngọn đèn sáng tới lúc mặt trời mọc!\"",
   },
   2: {
-    title: "Đêm 2 — Đảo Cau",
+    title: "Đêm 2 — Đảo Cau (Cần giữ ≥ 4/6 đèn tới Bình Minh)",
     quote:
-      "Ông Đăng: \"Bên kia cầu tre có cây cầu gãy và Gió Lạc rình rập cướp ánh sáng. Hãy dùng bục nhảy và Bùa Gió giữa cầu để vượt đảo thật nhanh!\"",
+      "Ông Đăng: \"Mỗi lần thắp đèn thành công túi đom đóm của con sẽ rộng thêm (+2, tối đa 20). Hãy lướt (Shift) qua cầu tre, nhặt Bùa Gió và giữ ít nhất 4 ngọn đèn sáng tới bình minh!\"",
   },
   3: {
-    title: "Đêm 3 — Đảo Chuông",
+    title: "Đêm 3 — Đảo Chuông (Cần giữ ≥ 5/7 đèn tới Bình Minh)",
     quote:
-      "Ông Đăng: \"Đỉnh tháp chuông là nơi cao nhất đảo. Gió lớn nổi lên từng cơn, hãy leo theo hai con dốc 30° và 150°, giữ vững ngọn lửa tới bình minh!\"",
+      "Ông Đăng: \"Đêm cuối cùng trên Đảo Chuông! Nếu đèn tắt, thắp lại chỉ tốn 5 đom đóm. Hãy canh chừng thanh dầu trên bản đồ và giữ ít nhất 5 ngọn đèn sáng tới bình minh!\"",
   },
 };
 
 function loadSettings(): UserSettings {
   try {
     const raw = localStorage.getItem(SETTINGS_STORAGE_KEY);
-    if (!raw) return { volume: 0.7, mouseSensitivity: 1.0 };
+    if (!raw) return { volume: 0.7, mouseSensitivity: 1.0, colorblindMode: false };
     const parsed = JSON.parse(raw);
     return {
       volume: typeof parsed.volume === "number" ? Math.max(0, Math.min(1, parsed.volume)) : 0.7,
@@ -32,9 +32,10 @@ function loadSettings(): UserSettings {
         typeof parsed.mouseSensitivity === "number"
           ? Math.max(0.2, Math.min(2.5, parsed.mouseSensitivity))
           : 1.0,
+      colorblindMode: Boolean(parsed.colorblindMode),
     };
   } catch {
-    return { volume: 0.7, mouseSensitivity: 1.0 };
+    return { volume: 0.7, mouseSensitivity: 1.0, colorblindMode: false };
   }
 }
 
@@ -42,7 +43,7 @@ function saveSettings(settings: UserSettings): void {
   try {
     localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(settings));
   } catch {
-    // Ignore storage quota errors in restricted environments
+    // Ignore storage quota errors
   }
 }
 
@@ -63,12 +64,14 @@ const optVolume = document.getElementById("opt-volume") as HTMLInputElement;
 const lblVolume = document.getElementById("lbl-volume")!;
 const optSens = document.getElementById("opt-sens") as HTMLInputElement;
 const lblSens = document.getElementById("lbl-sens")!;
+const optColorblind = document.getElementById("opt-colorblind") as HTMLInputElement;
 
 function syncSettingsUI(): void {
   optVolume.value = String(Math.round(settings.volume * 100));
   lblVolume.textContent = `${Math.round(settings.volume * 100)}%`;
   optSens.value = settings.mouseSensitivity.toFixed(1);
   lblSens.textContent = settings.mouseSensitivity.toFixed(1);
+  optColorblind.checked = settings.colorblindMode;
 }
 syncSettingsUI();
 
@@ -85,17 +88,20 @@ if (appEl) {
     appEl,
     {
       flamesIconsEl: document.getElementById("flames-icons")!,
+      capReadoutEl: document.getElementById("cap-readout")!,
       charmBadgeEl: document.getElementById("charm-badge")!,
       nightLabelEl: document.getElementById("night-label")!,
       clockTextEl: document.getElementById("clock-text")!,
       windBannerEl: document.getElementById("wind-banner")!,
       lanternsEl: document.getElementById("stat-lanterns")!,
       scoreEl: document.getElementById("stat-score")!,
+      fuelListEl: document.getElementById("lantern-fuel-list")!,
       interactPromptEl: document.getElementById("interact-prompt")!,
       moteBarEl: document.getElementById("mote-bar")!,
       cdDashEl: document.getElementById("cd-dash")!,
       cdPulseEl: document.getElementById("cd-pulse")!,
       lanternArrowEl: document.getElementById("lantern-arrow")!,
+      minimapCanvas: document.getElementById("minimap-canvas") as HTMLCanvasElement,
     },
     {
       onPauseToggled(paused): void {
@@ -118,12 +124,12 @@ if (appEl) {
           campaignTotalScore += res.score;
           if (res.night === 3) {
             screenResult.classList.add("dawn");
-            titleEl.textContent = "Bình Minh trên Ba Hòn Đảo!";
-            subEl.textContent = "Mây đã thắp sáng toàn bộ Đảo Bến, Đảo Cau và Đảo Chuông!";
+            titleEl.textContent = "Bình Minh Rực Rỡ Trên Ba Hòn Đảo!";
+            subEl.textContent = "Mây đã giữ vững ánh sáng của Đảo Bến, Đảo Cau và Đảo Chuông tới tận bình minh!";
             primaryBtn.textContent = "Chơi lại từ Đêm 1";
           } else {
-            titleEl.textContent = `Hoàn thành Đêm ${res.night}!`;
-            subEl.textContent = "Ánh đèn đã xua tan sương đen trên hòn đảo này.";
+            titleEl.textContent = `Sống sót qua Đêm ${res.night}!`;
+            subEl.textContent = "Ánh đèn đã đứng vững trước sương đen tới lúc bình minh.";
             primaryBtn.textContent = `Sang Đêm ${res.night + 1}`;
           }
         } else {
@@ -131,17 +137,18 @@ if (appEl) {
           subEl.textContent =
             res.reason === "no_flames"
               ? "Mây đã mất hết Ngọn Lửa."
-              : "Bình minh đã tới trước khi tất cả Đèn Lồng được thắp sáng.";
+              : "Khi bình minh lên, số Đèn Lồng đang sáng chưa đạt ngưỡng yêu cầu (60%).";
           primaryBtn.textContent = `Chơi lại Đêm ${res.night}`;
         }
 
         const b = res.breakdown;
         breakdownEl.innerHTML = `
-          <div><span>Đom đóm đã nạp</span><span>+${b.motesDeposited}</span></div>
-          <div><span>Thắp Đèn Lồng</span><span>+${b.lanterns}</span></div>
-          <div><span>Bóng Mực trúng Tỏa Sáng</span><span>+${b.stuns}</span></div>
-          <div><span>Thưởng thời gian còn lại</span><span>+${b.timeBonus}</span></div>
-          <div><span>Thưởng Ngọn Lửa còn lại</span><span>+${b.flameBonus}</span></div>
+          <div><span>Đom đóm nạp & châm dầu (+5/con)</span><span>+${b.motesUsed}</span></div>
+          <div><span>Thắp đèn lần đầu (+100/đèn)</span><span>+${b.firstLights}</span></div>
+          <div><span>Thắp lại đèn tắt (+40/lần)</span><span>+${b.relights}</span></div>
+          <div><span>Bóng Mực trúng Tỏa Sáng (+5 / +15 hút dầu)</span><span>+${b.stuns}</span></div>
+          <div><span>Thưởng đèn sáng lúc bình minh (+50 + dầu)</span><span>+${b.dawnLanternBonus}</span></div>
+          <div><span>Thưởng Ngọn Lửa còn lại (+50/lửa)</span><span>+${b.flameBonus}</span></div>
           <div class="total"><span>Điểm Đêm ${res.night}</span><span>${res.score}</span></div>
           <div class="total"><span>Tổng điểm hành trình</span><span>${campaignTotalScore}</span></div>
         `;
@@ -236,6 +243,12 @@ if (appEl) {
   optSens.addEventListener("input", () => {
     settings.mouseSensitivity = Number(optSens.value);
     lblSens.textContent = settings.mouseSensitivity.toFixed(1);
+    client.applySettings(settings);
+    saveSettings(settings);
+  });
+
+  optColorblind.addEventListener("change", () => {
+    settings.colorblindMode = optColorblind.checked;
     client.applySettings(settings);
     saveSettings(settings);
   });
