@@ -93,15 +93,15 @@ Tự kiểm:
 **Mục tiêu:** xử lý một thay đổi yêu cầu có thể **thay thế** những luật đã có.
 
 Gợi ý:
-- [ ] Đọc kỹ những chỗ ticket nói luật cũ bị thay. Liệt kê những test, tài liệu và giả định cũ bị ảnh hưởng.
-- [ ] Ghi lại ngắn gọn bạn thay đổi thiết kế thế nào và vì sao (một đoạn ngắn là đủ).
-- [ ] Test cũ bị luật mới làm sai: **sửa hoặc bỏ kèm lý do**, không bỏ qua âm thầm.
-- [ ] Chạy lại tất cả kiểm chứng còn hiệu lực.
+- [x] Đọc kỹ những chỗ ticket nói luật cũ bị thay. Liệt kê những test, tài liệu và giả định cũ bị ảnh hưởng. *(Xem `docs/notes/assumptions.md`)*
+- [x] Ghi lại ngắn gọn bạn thay đổi thiết kế thế nào và vì sao (một đoạn ngắn là đủ). *(Xem `docs/notes/adr-phase-3.md` và `CHANGELOG.md`)*
+- [x] Test cũ bị luật mới làm sai: **sửa hoặc bỏ kèm lý do**, không bỏ qua âm thầm. *(Đã cập nhật `tests/simulation.test.ts` kèm comment giải thích và thêm `tests/phase3Changes.test.ts`)*
+- [x] Chạy lại tất cả kiểm chứng còn hiệu lực. *(25/25 tests pass trong `npm run verify`)*
 
 Tự kiểm:
-- [ ] Người khác đọc ghi chú của bạn hiểu được vì sao đổi hướng.
-- [ ] Không còn test bị tắt mà không có lý do.
-- [ ] Đã gắn tag `phase-3` và push.
+- [x] Người khác đọc ghi chú của bạn hiểu được vì sao đổi hướng.
+- [x] Không còn test bị tắt mà không có lý do.
+- [ ] Đã gắn tag `phase-3` và push. *(Đã gắn tag local `phase-3`; sinh viên tự `git push origin main --tags`)*
 
 ---
 

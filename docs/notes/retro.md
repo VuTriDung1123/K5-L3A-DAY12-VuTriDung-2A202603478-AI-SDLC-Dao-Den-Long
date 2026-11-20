@@ -24,10 +24,10 @@
 - **Điều cần chỉnh:** Luôn test xuất phát mặc định `(0,0,0)` trên mọi bản đồ mới để phát hiện sớm va chạm cản đường.
 
 ### Phase 3 (Ticket-03)
-- Đạt:
-- Chưa đạt:
-- Ảnh hưởng phase trước & lý do sửa/bỏ test cũ:
-- Điều cần chỉnh:
+- **Đạt:** Thay thế mượt mà 4 luật cốt lõi sang Contract v1.2 (nhiên liệu đèn `fuelTicks` nguyên `1/60`, Bóng hút dầu `drain`, luật thắng `dawn_survived`, bảng điểm mới & sức chứa tăng dần `10..20`), ghi ADR-001 & Breaking Changes trong `CHANGELOG.md`, nâng cấp mạnh đồ họa 3D (Minimap Radar, cỏ cây đung đưa, vệt Lướt, thanh dầu 3D, chế độ Mù màu), 25/25 tests pass ngay lượt đầu.
+- **Chưa đạt / Chờ kiểm thủ công:** Trải nghiệm trực quan trên trình duyệt chờ sinh viên mở `npm run dev` kiểm tra.
+- **Ảnh hưởng phase trước & lý do sửa/bỏ test cũ:** Các test ở `tests/simulation.test.ts` giả định đèn sáng vĩnh viễn và thắng sớm `all_lit` đã được cập nhật sang luật `dawn_survived` và điểm `+5`/đom đóm (ghi rõ trong `docs/notes/assumptions.md`); toàn bộ 8 test tính năng Phase 2 (`tests/phase2Features.test.ts`) vẫn pass 100% không cần sửa.
+- **Điều cần chỉnh:** Dùng số nguyên `1/60` (`fuelTicks`) theo gợi ý của ticket giúp tránh hoàn toàn lỗi làm tròn số thực.
 
 ### Phase 4 (Ticket-04)
 - Đạt:

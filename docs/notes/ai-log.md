@@ -13,7 +13,7 @@ Ghi lại công cụ AI đã dùng, ước tính token/chi phí mỗi phase, cá
 | CP0 (Chuẩn bị) | Antigravity AI | Đọc 6 tài liệu lab, dựng skeleton dự án, hello 3D + headless, harness, CI | ~15k in / ~6k out (ước tính phiên CP0) | Free / quota IDE | Đọc song song toàn bộ 6 file `.md` một lượt; viết code hello tối giản, không tạo asset thừa. |
 | Phase 1 | Antigravity AI | Phân tích PRD-0 + Test Contract v1.0, viết `src/core/`, CLI headless, game 3D Three.js, audio, bộ 11 unit/CLI test, verify bản clone sạch | ~45k in / ~18k out (ước tính phiên Phase 1) | Free / quota IDE | Thiết kế tách `src/core/` và `game.contract.json` một lượt; viết kế hoạch test trước khi code để bắt lỗi sớm trong 1 lần sửa. |
 | Phase 2 | Antigravity AI | Chuẩn hóa Contract v1.1, bản đồ 3 Đảo, Gió Lạc, Bùa Gió, Lướt, Pause, UI/HUD đầy đủ, 19 tests & benchmark 21.600 tick | ~70k in / ~28k out (ước tính phiên Phase 2) | Free / quota IDE | Lập spec + acceptance criteria trước; chia nhỏ `maps.ts` riêng khỏi `simulation.ts`; gộp chạy kiểm chứng qua `npm run verify`. |
-| Phase 3 | | | | | |
+| Phase 3 | Antigravity AI | Xử lý Change Request Ticket-03 (Contract v1.2: nhiên liệu đèn, Bóng hút dầu `drain`, luật thắng `dawn_survived`, sức chứa tăng dần, mù màu) + nâng cấp Minimap/cây cỏ/hiệu ứng 3D | ~55k in / ~24k out (ước tính phiên Phase 3) | Free / quota IDE | Viết ADR-001 và dùng đơn vị nguyên `fuelTicks` (`1/60`) ngay từ thiết kế nên 25/25 unit tests pass ngay lần chạy đầu tiên. |
 | Phase 4 | | | | | |
 
 ---
@@ -41,3 +41,9 @@ Ghi lại công cụ AI đã dùng, ước tính token/chi phí mỗi phase, cá
   2. **Kiểu hẹp dòng điều khiển TypeScript (`TS2367`) trong `headlessRunner.ts`:** Kiểm tra `sim.state === "won" || "lost"` sau `sim.step()` bị TS báo lỗi do chưa nhận biết `step()` đổi trạng thái -> thêm `sim.isFinished()`.
   3. **Benchmark `21,600` tick dừng sớm ở tick `21,148` với `flames: 100`:** Do Gió + 10 Bóng Mực đẩy/đánh hết 100 lửa -> nâng scenario benchmark lên `flames: 999` để đo trọn vẹn 21.600 tick (`139 ms`).
 - **Cập nhật harness:** Cập nhật `AGENTS.md` (Contract v1.1, quy ước góc `x=r*cosθ, z=r*sinθ`, trạng thái chuẩn, không tự push) và `.agents/skills/verify-and-proof/SKILL.md` (thêm bước benchmark 21.600 tick và tất định 3 Đêm).
+
+### Phase 3 (Ticket-03 — Change Request "Đèn cạn dầu" / Contract v1.2)
+- **Lời nhắc chính:** Triển khai Ticket-03 thay thế luật đèn/vùng an toàn/luật thắng/điểm số sang Contract v1.2, đồng thời nâng cấp đồ họa 3D (Minimap, cây cỏ đung đưa, thanh dầu 3D, hiệu ứng Lướt, chế độ Mù màu).
+- **Lỗi / Bất cập phát hiện khi chạy build:**
+  1. **Ký tự `<` chưa escape trong `index.html` (`(< 30)`):** Khi chạy `vite build`, bộ phân tích HTML `parse5` báo lỗi `invalid-first-character-of-tag-name` tại `(< 30)`. **Cách sửa:** Đổi sang `(&lt; 30)`, `vite build` pass ngay trong `1.46 s`.
+- **Cập nhật harness:** Cập nhật `AGENTS.md` và `verify-and-proof` skill sang Contract v1.2 (bắt buộc tính `fuelTicks` nguyên `1/60`, trạng thái `drain`, luật thắng `dawn_survived`, ghi ADR khi có Change Request).
