@@ -12,7 +12,7 @@ Ghi lại công cụ AI đã dùng, ước tính token/chi phí mỗi phase, cá
 |---|---|---|---|---|---|
 | CP0 (Chuẩn bị) | Antigravity AI | Đọc 6 tài liệu lab, dựng skeleton dự án, hello 3D + headless, harness, CI | ~15k in / ~6k out (ước tính phiên CP0) | Free / quota IDE | Đọc song song toàn bộ 6 file `.md` một lượt; viết code hello tối giản, không tạo asset thừa. |
 | Phase 1 | Antigravity AI | Phân tích PRD-0 + Test Contract v1.0, viết `src/core/`, CLI headless, game 3D Three.js, audio, bộ 11 unit/CLI test, verify bản clone sạch | ~45k in / ~18k out (ước tính phiên Phase 1) | Free / quota IDE | Thiết kế tách `src/core/` và `game.contract.json` một lượt; viết kế hoạch test trước khi code để bắt lỗi sớm trong 1 lần sửa. |
-| Phase 2 | | | | | |
+| Phase 2 | Antigravity AI | Chuẩn hóa Contract v1.1, bản đồ 3 Đảo, Gió Lạc, Bùa Gió, Lướt, Pause, UI/HUD đầy đủ, 19 tests & benchmark 21.600 tick | ~70k in / ~28k out (ước tính phiên Phase 2) | Free / quota IDE | Lập spec + acceptance criteria trước; chia nhỏ `maps.ts` riêng khỏi `simulation.ts`; gộp chạy kiểm chứng qua `npm run verify`. |
 | Phase 3 | | | | | |
 | Phase 4 | | | | | |
 
@@ -33,3 +33,11 @@ Ghi lại công cụ AI đã dùng, ước tính token/chi phí mỗi phase, cá
   3. **UTF-8 BOM khi tạo file JSON trên Windows PowerShell:** `JSON.parse` lỗi khi file `scenario.json` có BOM `\uFEFF`. **Cách sửa:** Strip BOM đầu chuỗi trước `JSON.parse` trong `src/headless/cli.ts`.
   4. **Lỗi cú pháp `if exist ... && ...` trong `cmd /c`** và dấu `&&` trong PowerShell 5.1 ở lệnh kiểm tra thủ công -> sửa sang PowerShell chuẩn có kiểm tra `$LASTEXITCODE`.
 - **Cập nhật harness:** Cập nhật `AGENTS.md` bổ sung quy tắc đồng bộ `game.contract.json` (`tests/contractSync.test.ts`), bắt buộc dùng `withinRadiusXZ` cho bán kính, và cô lập phần sáng tạo trong `src/render/`.
+
+### Phase 2 (Ticket-02 — Contract v1.1)
+- **Lời nhắc chính:** Triển khai Ticket-02 ("Ba hòn đảo"), chuẩn hóa toàn bộ thông số sang Contract v1.1, giữ không tự push lên GitHub.
+- **Lỗi / Bất cập phát hiện khi chạy test thật:**
+  1. **Va chạm Đảo Chuông (Đêm 3) nhốt người chơi tại `(0,0,0)`:** Ban đầu coi phần dưới Tầng 2 (`r <= 8, Y < 6`) là khối đặc khiến nhân vật xuất phát ở `(0,0,0)` bị kẹt; phát hiện nhờ test Gió mạnh Đêm 3. **Cách sửa:** Tầng 0 (`Y=0`) thông thoáng toàn đảo (`r <= 45`), Tầng 1 & 2 là sàn nâng có trụ đỡ thanh mảnh, chỉ Tháp Chuông (`r < 2, Y >= 5.5`) chặn ngang và nhảy thường (`max 1.225 m`) không thể vượt lên tầng cao nếu không đi dốc/bục nhảy.
+  2. **Kiểu hẹp dòng điều khiển TypeScript (`TS2367`) trong `headlessRunner.ts`:** Kiểm tra `sim.state === "won" || "lost"` sau `sim.step()` bị TS báo lỗi do chưa nhận biết `step()` đổi trạng thái -> thêm `sim.isFinished()`.
+  3. **Benchmark `21,600` tick dừng sớm ở tick `21,148` với `flames: 100`:** Do Gió + 10 Bóng Mực đẩy/đánh hết 100 lửa -> nâng scenario benchmark lên `flames: 999` để đo trọn vẹn 21.600 tick (`139 ms`).
+- **Cập nhật harness:** Cập nhật `AGENTS.md` (Contract v1.1, quy ước góc `x=r*cosθ, z=r*sinθ`, trạng thái chuẩn, không tự push) và `.agents/skills/verify-and-proof/SKILL.md` (thêm bước benchmark 21.600 tick và tất định 3 Đêm).

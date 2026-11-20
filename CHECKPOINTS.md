@@ -77,14 +77,14 @@ Tự kiểm:
 **Mục tiêu:** tiếp nhận yêu cầu mới, mở rộng sản phẩm mà không làm hỏng những gì đã đúng.
 
 Gợi ý:
-- [ ] Đọc ticket, so với những giả định ở Phase 1. Chỗ nào ticket đã làm rõ hoặc đổi, cập nhật giả định.
-- [ ] Viết kế hoạch kiểm chứng cho phần mới **trước** khi code.
-- [ ] Chạy lại toàn bộ kiểm chứng của Phase 1 sau khi tích hợp.
-- [ ] Rà soát harness: agent có sai lặp lại không? Đã đến lúc thêm một dòng vào hướng dẫn, một skill hay một hook chưa?
+- [x] Đọc ticket, so với những giả định ở Phase 1. Chỗ nào ticket đã làm rõ hoặc đổi, cập nhật giả định. *(Xem `docs/notes/assumptions.md` và `docs/notes/spec-phase-2.md`)*
+- [x] Viết kế hoạch kiểm chứng cho phần mới **trước** khi code.
+- [x] Chạy lại toàn bộ kiểm chứng của Phase 1 sau khi tích hợp. *(19/19 tests pass trong `npm run verify`)*
+- [x] Rà soát harness: agent có sai lặp lại không? Đã đến lúc thêm một dòng vào hướng dẫn, một skill hay một hook chưa? *(Đã cập nhật `AGENTS.md` và `verify-and-proof` skill)*
 
 Tự kiểm:
-- [ ] Phần mới có bằng chứng; phần cũ không bị hỏng (hoặc có lý do rõ ràng nếu đổi).
-- [ ] Đã gắn tag `phase-2` và push.
+- [x] Phần mới có bằng chứng; phần cũ không bị hỏng (hoặc có lý do rõ ràng nếu đổi). *(Xem `docs/proof/phase-2.md`)*
+- [ ] Đã gắn tag `phase-2` và push. *(Đã gắn tag local `phase-2`; sinh viên tự `git push origin main --tags` theo yêu cầu)*
 
 ---
 

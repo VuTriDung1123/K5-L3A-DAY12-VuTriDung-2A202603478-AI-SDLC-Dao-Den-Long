@@ -18,10 +18,10 @@
 - **Điều cần chỉnh ở harness / quy trình:** Bổ sung quy tắc dùng `withinRadiusXZ` (`BOUNDARY_EPS`) và cô lập sáng tạo ở `src/render/` vào `AGENTS.md` sau khi test thật phát hiện lỗi biên số thực.
 
 ### Phase 2 (Ticket-02)
-- Đạt:
-- Chưa đạt:
-- Ảnh hưởng phase trước:
-- Điều cần chỉnh:
+- **Đạt:** Đồng bộ Contract v1.1 (`game.contract.json` + `DEFAULT_TUNING`), đủ 3 bản đồ Đêm 1/2/3, đầy đủ cơ chế mới (Lướt, Bùa Gió, Gió Lạc, Gió mạnh, Pause, Rơi & Hồi sinh), UI Menu/Ông Đăng/Settings/HUD/Audio, 19/19 tests pass, benchmark 21.600 tick chỉ `139 ms`.
+- **Chưa đạt / Chờ kiểm thủ công:** Đo FPS thực tế ở `1280x720` và kiểm tra trải nghiệm chơi 3D trên trình duyệt chờ sinh viên chạy `npm run dev` (do Chrome chưa bật remote debugging).
+- **Ảnh hưởng phase trước:** Ticket-02 chuẩn hóa lại nhiều thông số so với Phase 1 (`carry_capacity` 5->10, `lantern_cost` 3->10, `per_mote` tính khi nạp đèn, `fall_enabled` false->true, ...). Đã cập nhật toàn bộ test regression kèm lý do trong `docs/notes/assumptions.md`.
+- **Điều cần chỉnh:** Luôn test xuất phát mặc định `(0,0,0)` trên mọi bản đồ mới để phát hiện sớm va chạm cản đường.
 
 ### Phase 3 (Ticket-03)
 - Đạt:
