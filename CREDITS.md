@@ -15,7 +15,7 @@
 
 ## Asset & Âm thanh tự tạo / bên ngoài
 
-- Hiện tại (Checkpoint 0): toàn bộ hình học 3D là primitive tự dựng bằng code Three.js (`CylinderGeometry`, `OctahedronGeometry`). Chưa dùng asset bên ngoài.
+- **Phase 1:** Toàn bộ hình khối 3D (Mây đội nón lá có đèn lồng nhỏ, Đảo Bến, bến tàu gỗ, 5 Đèn Lồng Lớn, đom đóm, Bóng Mực, hoa đăng trôi trên biển mây) được dựng 100% bằng primitive Three.js trong mã nguồn; âm thanh được tổng hợp trực tiếp bằng Web Audio API (`src/render/audio.ts`). Không dùng asset bên ngoài.
 
 ## Công cụ AI hỗ trợ
 
