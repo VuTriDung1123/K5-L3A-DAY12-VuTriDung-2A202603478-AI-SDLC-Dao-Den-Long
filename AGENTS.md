@@ -8,15 +8,16 @@
 1. **Tách tuyệt đối logic khỏi hiển thị:**
    - `src/core/` và `src/headless/` **không được** import `three`, `window`, `document`, hay bất kỳ API trình duyệt nào.
    - Ranh giới này được ép bằng compile-time check trong `tsconfig.headless.json` (`"lib": ["ES2022"]`, `"types": ["node"]`).
-2. **Logic phải tất định (deterministic):** Dùng PRNG có seed và fixed timestep `dt`; không dùng `Math.random()` hay `Date.now()` trong `src/core/`.
-3. **Không bịa yêu cầu / không sửa tay output / không viết test giả:** Khi test cũ bị ticket mới thay đổi, sửa hoặc bỏ kèm lý do trong `docs/notes/assumptions.md`.
+2. **Logic phải tất định (deterministic):** Dùng PRNG có seed và fixed timestep `dt = 1/60`; không dùng `Math.random()` hay `Date.now()` trong `src/core/`.
+3. **Đồng bộ Contract & Khoảng cách:** `game.contract.json` phải khớp 1:1 với `DEFAULT_TUNING` (`tests/contractSync.test.ts`). Mọi kiểm tra bán kính dùng `withinRadiusXZ` (`BOUNDARY_EPS = 1e-6`) để tránh lệch số thực IEEE-754.
+4. **Sáng tạo cô lập & Trung thực:** Phần sáng tạo đồ họa/âm thanh chỉ nằm trong `src/render/`, không ảnh hưởng output headless. Không bịa yêu cầu / không sửa tay output / không viết test giả.
 
 ## Lệnh chuẩn
 
 - Cài đặt: `npm ci` (hoặc `npm install`)
-- Chạy test đơn vị: `npm test`
+- Chạy test đơn vị & contract: `npm test`
 - Build typecheck + headless + 3D: `npm run build`
-- Chạy chế độ headless: `npm run headless -- --seed 42 --steps 5`
+- Chạy chế độ headless chuẩn contract: `node dist-headless/headless/cli.js --seed 42 --night 1 --ticks 120 --out out.jsonl`
 - Chạy kiểm chứng tổng hợp (test + build + kiểm tra tính tất định): `npm run verify`
 - Chạy 3D local: `npm run dev`
 

@@ -58,17 +58,17 @@ Tự kiểm: clone repo sang thư mục khác và chạy được chương trìn
 **Mục tiêu:** từ một mô tả tổng quát và mơ hồ, làm ra một bản chơi được của màn đầu tiên, kèm chế độ headless theo Test Contract, và chứng minh nó đúng.
 
 Gợi ý:
-- [ ] Đọc PRD-0 hai lần. Lần một đọc để hiểu game. Lần hai gạch chân những chỗ mơ hồ và những chỗ **bắt buộc chính xác** (Test Contract).
-- [ ] Viết giả định cho từng chỗ mơ hồ, và các con số bạn tự chọn. Những con số này sẽ cần khai báo theo yêu cầu của contract.
-- [ ] Tách logic game khỏi phần hiển thị để chạy được headless.
-- [ ] Tự viết vài scenario nhỏ và kiểm tra đầu ra đúng định dạng.
-- [ ] Chạy hai lần cùng đầu vào và so sánh, nếu contract yêu cầu tính tất định.
-- [ ] Làm đúng các bàn giao liệt kê trong PRD-0.
+- [x] Đọc PRD-0 hai lần. Lần một đọc để hiểu game. Lần hai gạch chân những chỗ mơ hồ và những chỗ **bắt buộc chính xác** (Test Contract).
+- [x] Viết giả định cho từng chỗ mơ hồ, và các con số bạn tự chọn. Những con số này sẽ cần khai báo theo yêu cầu của contract. *(Xem `docs/notes/assumptions.md` và `game.contract.json`)*
+- [x] Tách logic game khỏi phần hiển thị để chạy được headless. *(Ép biên dịch bằng `tsconfig.headless.json`)*
+- [x] Tự viết vài scenario nhỏ và kiểm tra đầu ra đúng định dạng. *(11 tests + CLI scenario thực tế trong `docs/proof/phase-1.md`)*
+- [x] Chạy hai lần cùng đầu vào và so sánh, nếu contract yêu cầu tính tất định. *(`npm run verify` bước `[3/4]`)*
+- [x] Làm đúng các bàn giao liệt kê trong PRD-0.
 
 Tự kiểm:
-- [ ] Clone sạch, làm theo README của bạn, chạy được game.
-- [ ] Mỗi yêu cầu chính có bằng chứng; chỗ chưa đạt đã ghi.
-- [ ] Đã gắn tag `phase-1` và push.
+- [x] Clone sạch, làm theo README của bạn, chạy được game. *(Đã test clone sạch `build_cmd` + `npm run verify` + `headless_cmd`; cần sinh viên tự chạy `npm run dev` kiểm lại giao diện 3D trực quan)*
+- [x] Mỗi yêu cầu chính có bằng chứng; chỗ chưa đạt đã ghi. *(Xem `docs/proof/phase-1.md`)*
+- [ ] Đã gắn tag `phase-1` và push. *(Đã gắn tag local `phase-1`; chờ sinh viên chạy `git push origin main --tags`)*
 
 ---
 

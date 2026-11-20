@@ -12,10 +12,10 @@
 - **Bài học / Điều chỉnh:** Ranh giới `tsconfig.headless.json` giúp phát hiện ngay nếu code logic vô tình chạm API trình duyệt.
 
 ### Phase 1 (PRD-0)
-- Đạt:
-- Chưa đạt:
-- Ảnh hưởng phase trước: N/A
-- Điều cần chỉnh ở harness / quy trình:
+- **Đạt:** Toàn bộ yêu cầu lõi Đêm 1 – Đảo Bến (`src/render/`), mô phỏng thuần `60 tick/s` (`src/core/`), `game.contract.json` đồng bộ tự động, 11/11 test (unit + contract sync + CLI exit codes), tính tất định tuyệt đối và bản clone sạch pass.
+- **Chưa đạt / Chờ kiểm thủ công:** Công cụ kiểm tra trình duyệt tự động bị chặn do Chrome chưa bật remote debugging (`DevToolsActivePort`), nên việc chơi thử trực quan trên WebGL cần sinh viên tự mở `npm run dev` kiểm lại.
+- **Ảnh hưởng phase trước:** Nâng cấp từ chương trình Hello ở CP0 lên mô phỏng Đêm 1 hoàn chỉnh; giữ nguyên ranh giới `tsconfig.headless.json`.
+- **Điều cần chỉnh ở harness / quy trình:** Bổ sung quy tắc dùng `withinRadiusXZ` (`BOUNDARY_EPS`) và cô lập sáng tạo ở `src/render/` vào `AGENTS.md` sau khi test thật phát hiện lỗi biên số thực.
 
 ### Phase 2 (Ticket-02)
 - Đạt:
