@@ -24,14 +24,14 @@ function runNpm(args) {
   });
 }
 
-console.log("[1/5] Running unit, regression, and Phase 2 feature tests...");
+console.log("[1/6] Running unit, regression, contract v1.3, and Phase 1-4 feature tests...");
 runNpm(["test"]);
 
-console.log("[2/5] Typechecking, verifying headless boundary, and building 3D bundle...");
+console.log("[2/6] Typechecking, verifying headless boundary, and building 3D bundle...");
 runNpm(["run", "build"]);
 
-console.log("[3/5] Checking determinism across Nights 1, 2, 3...");
-const tmpDir = mkdtempSync(join(tmpdir(), "ddl-verify-v11-"));
+console.log("[3/6] Checking determinism across Nights 1, 2, 3...");
+const tmpDir = mkdtempSync(join(tmpdir(), "ddl-verify-v13-"));
 try {
   for (const night of ["1", "2", "3"]) {
     const out1 = join(tmpDir, `n${night}-a.jsonl`);
@@ -68,7 +68,7 @@ try {
     }
   }
 
-  console.log("[4/5] Running full 21,600-tick Night 3 performance benchmark (limit <= 30,000 ms)...");
+  console.log("[4/6] Running full 21,600-tick Night 3 performance benchmark (limit <= 30,000 ms)...");
   const benchScenario = join(tmpDir, "bench-scenario.json");
   writeFileSync(
     benchScenario,
@@ -118,16 +118,46 @@ try {
     typeof first?.lanterns?.[0]?.fuel !== "number" ||
     typeof first?.player?.capacity !== "number"
   ) {
-    console.error("Contract v1.2 check FAILED on Night 3 initial snapshot:", first);
+    console.error("Contract v1.3 check FAILED on Night 3 initial snapshot:", first);
     process.exit(1);
   }
   if (last?.type !== "end" || last?.ticks !== 21600) {
-    console.error("Contract v1.2 check FAILED on full 21,600-tick end line:", last);
+    console.error("Contract v1.3 check FAILED on full 21,600-tick end line:", last);
+    process.exit(1);
+  }
+
+  console.log("[5/6] Verifying soak CLI (3 nights) & --export-leaderboard CLI...");
+  const soakOut = join(tmpDir, "soak-quick.json");
+  runNodeCommand([
+    "dist-headless/headless/soak.js",
+    "--seed",
+    "7",
+    "--nights",
+    "3",
+    "--out",
+    soakOut,
+  ]);
+  const soakData = JSON.parse(readFileSync(soakOut, "utf8"));
+  if (
+    soakData.nights !== 3 ||
+    soakData.crashes !== 0 ||
+    !Array.isArray(soakData.results) ||
+    soakData.results.length !== 3
+  ) {
+    console.error("Soak quick check FAILED:", soakData);
+    process.exit(1);
+  }
+
+  const lbOut = join(tmpDir, "lb-export.json");
+  runNodeCommand(["scripts/run-game.mjs", "--export-leaderboard", lbOut]);
+  const lbData = JSON.parse(readFileSync(lbOut, "utf8"));
+  if (!Array.isArray(lbData.entries)) {
+    console.error("Leaderboard export check FAILED:", lbData);
     process.exit(1);
   }
 
   console.log(
-    `[5/5] Verification PASSED! 21,600-tick benchmark finished in ${elapsedMs} ms. End: ${JSON.stringify(last)}`
+    `[6/6] Verification PASSED! 21,600-tick=${elapsedMs} ms, soak3=${soakData.mem_start_mb}->${soakData.mem_end_mb} MB (0 crashes), lb_entries=${lbData.entries.length}.`
   );
 } finally {
   rmSync(tmpDir, { recursive: true, force: true });

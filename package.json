@@ -1,9 +1,9 @@
 {
   "name": "k5-l3a-day12-vutridung-dao-den-long",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "Day 12 AI SDLC — Dao Den Long (3D game + deterministic headless simulation)",
+  "description": "Day 12 AI SDLC — Dao Den Long (3D game + deterministic headless simulation + benchmark & soak)",
   "author": "Vu Tri Dung (2A202603478)",
   "license": "MIT",
   "engines": {
@@ -11,11 +11,13 @@
   },
   "scripts": {
     "dev": "vite",
+    "start": "node scripts/run-game.mjs",
     "build": "tsc --noEmit && tsc -p tsconfig.headless.json && vite build",
     "build:headless": "tsc -p tsconfig.headless.json",
     "preview": "vite preview --host 127.0.0.1 --port 4173",
     "headless": "node dist-headless/headless/cli.js",
-    "headless:dev": "tsx src/headless/cli.ts",
+    "bench": "node scripts/bench.mjs",
+    "soak": "node dist-headless/headless/soak.js",
     "test": "vitest run",
     "verify": "node scripts/verify.mjs"
   },
