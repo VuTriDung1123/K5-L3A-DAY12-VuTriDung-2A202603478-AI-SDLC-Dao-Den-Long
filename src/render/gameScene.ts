@@ -96,6 +96,7 @@ interface LanternVisual {
   core: THREE.Mesh;
   coreMat: THREE.MeshStandardMaterial;
   tearStrips: THREE.Group;
+  fuelBarGroup: THREE.Group;
   fuelBarBg: THREE.Mesh;
   fuelBarFill: THREE.Mesh;
   fuelBarMat: THREE.MeshBasicMaterial;
@@ -200,13 +201,13 @@ export class DaoDenLongClient {
     this.callbacks = callbacks;
 
     this.scene.background = new THREE.Color(PALETTE.sky);
-    this.scene.fog = new THREE.FogExp2(PALETTE.fog, 0.012);
+    this.scene.fog = new THREE.FogExp2(0x162045, 0.0032);
 
     this.camera = new THREE.PerspectiveCamera(
       56,
       container.clientWidth / Math.max(1, container.clientHeight),
       0.1,
-      260
+      1200
     );
 
     this.renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -214,13 +215,16 @@ export class DaoDenLongClient {
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     container.appendChild(this.renderer.domElement);
 
-    this.ambientLight = new THREE.AmbientLight(0xffffff, 0.15);
+    this.ambientLight = new THREE.AmbientLight(0xdce6ff, 0.36);
     this.scene.add(this.ambientLight);
-    this.hemiLight = new THREE.HemisphereLight(0x9fb4ff, 0x162238, 0.48);
+    this.hemiLight = new THREE.HemisphereLight(0xb2c8ff, 0x243347, 0.72);
     this.scene.add(this.hemiLight);
-    const moon = new THREE.DirectionalLight(0xd2ddff, 0.72);
-    moon.position.set(25, 42, -20);
+    const moon = new THREE.DirectionalLight(0xe4ecff, 0.95);
+    moon.position.set(-45, 72, -55);
     this.scene.add(moon);
+    const dawnRim = new THREE.DirectionalLight(0xffb478, 0.45);
+    dawnRim.position.set(60, 26, -80);
+    this.scene.add(dawnRim);
 
     this.scene.add(this.playerGroup.root);
 
@@ -470,7 +474,19 @@ export class DaoDenLongClient {
         this.accumulator -= FIXED_DT;
       }
 
-      this.worldHandle?.update(elapsedSec, this.sim.wind, this.settings.reducedMotion);
+      const dawnProgress = Math.max(
+        0,
+        Math.min(1, 1 - this.sim.rawTimeLeftS / Math.max(1, this.sim.map.durationS))
+      );
+      const litRatio =
+        this.sim.lanterns.filter((l) => l.lit).length / Math.max(1, this.sim.lanterns.length);
+      this.worldHandle?.update(
+        elapsedSec,
+        this.sim.wind,
+        this.settings.reducedMotion,
+        dawnProgress,
+        litRatio
+      );
       this.syncSceneVisuals(elapsedSec, dt);
       this.updateCamera(elapsedSec);
       this.updateHud(elapsedSec);
@@ -646,8 +662,8 @@ export class DaoDenLongClient {
         vis.safeRing.visible = sim.hasSafeZone(l);
         if (!this.settings.reducedMotion) vis.safeRing.rotation.z = elapsedSec * 0.4;
 
-        vis.fuelBarBg.visible = true;
-        vis.fuelBarFill.visible = true;
+        vis.fuelBarGroup.visible = true;
+        vis.fuelBarGroup.lookAt(this.camera.position);
         const ratio = Math.max(0.02, fuel / sim.tuning.fuel_max);
         vis.fuelBarFill.scale.set(ratio, 1, 1);
         vis.fuelBarFill.position.x = -0.6 * (1 - ratio);
@@ -670,12 +686,11 @@ export class DaoDenLongClient {
         vis.light.intensity = ratio * 1.8;
         vis.lightShaft.visible = false;
         vis.safeRing.visible = false;
-        vis.fuelBarBg.visible = false;
-        vis.fuelBarFill.visible = false;
+        vis.fuelBarGroup.visible = false;
       }
     }
 
-    this.ambientLight.intensity = 0.15 + 0.55 * (litCount / Math.max(1, sim.lanterns.length));
+    this.ambientLight.intensity = 0.34 + 0.56 * (litCount / Math.max(1, sim.lanterns.length));
 
     if (this.pulseAnimRemaining > 0) {
       this.pulseAnimRemaining = Math.max(0, this.pulseAnimRemaining - dt);
@@ -805,8 +820,8 @@ export class DaoDenLongClient {
     if (!this.sim) return;
     const p = this.sim.player.pos;
     const theta = (this.camYawDeg * Math.PI) / 180;
-    const dist = 11.5;
-    const height = 5.8;
+    const dist = 12.2;
+    const height = 4.6;
     const shake =
       !this.settings.reducedMotion && this.cameraShakeTimer > 0
         ? Math.sin(elapsedSec * 65) * 0.28
@@ -814,7 +829,7 @@ export class DaoDenLongClient {
     const tx = p[0] - Math.sin(theta) * dist + shake;
     const tz = p[2] - Math.cos(theta) * dist;
     this.camera.position.lerp(new THREE.Vector3(tx, p[1] + height, tz), 0.16);
-    this.camera.lookAt(p[0], p[1] + 1.1, p[2]);
+    this.camera.lookAt(p[0], p[1] + 2.05, p[2]);
   }
 
   private updateHud(_elapsedSec: number): void {
@@ -999,6 +1014,18 @@ export class DaoDenLongClient {
       ctx.beginPath();
       ctx.arc(cx, cy, 8 * worldScale, 0, Math.PI * 2);
       ctx.fill();
+      // Draw the two Night 3 shrine ramps (30 deg and 150 deg, r=24..30)
+      ctx.strokeStyle = "#d4be94";
+      ctx.lineWidth = 4;
+      for (const deg of [30, 150]) {
+        const rad = (deg * Math.PI) / 180;
+        const [x1, z1] = toMap(24 * Math.cos(rad), 24 * Math.sin(rad));
+        const [x2, z2] = toMap(30 * Math.cos(rad), 30 * Math.sin(rad));
+        ctx.beginPath();
+        ctx.moveTo(x1, z1);
+        ctx.lineTo(x2, z2);
+        ctx.stroke();
+      }
     }
 
     ctx.fillStyle = "#FFE58A";
@@ -1125,9 +1152,14 @@ export class DaoDenLongClient {
 
     const w = this.container.clientWidth;
     const h = this.container.clientHeight;
-    const margin = 48;
-    const sx = w * 0.5 + nx * (w * 0.5 - margin);
-    const sy = h * 0.5 - ny * (h * 0.5 - margin);
+    const marginX = 52;
+    const marginTop = Math.abs(nx) < 0.35 && ny > 0 ? 112 : 52;
+    const marginBottom = Math.abs(nx) < 0.45 && ny < 0 ? 118 : 52;
+    const sx = w * 0.5 + nx * (w * 0.5 - marginX);
+    const sy =
+      ny > 0
+        ? h * 0.5 - ny * (h * 0.5 - marginTop)
+        : h * 0.5 - ny * (h * 0.5 - marginBottom);
     const angleDeg = (Math.atan2(nx, ny) * 180) / Math.PI;
 
     el.style.display = "block";
@@ -1259,12 +1291,15 @@ function buildLanternVisual(safeRadius: number): LanternVisual {
   lightShaft.visible = false;
   group.add(lightShaft);
 
+  const fuelBarGroup = new THREE.Group();
+  fuelBarGroup.position.y = 3.55;
+  group.add(fuelBarGroup);
+
   const fuelBarBg = new THREE.Mesh(
     new THREE.BoxGeometry(1.26, 0.16, 0.08),
     new THREE.MeshBasicMaterial({ color: 0x121629 })
   );
-  fuelBarBg.position.y = 3.55;
-  group.add(fuelBarBg);
+  fuelBarGroup.add(fuelBarBg);
 
   const fuelBarMat = new THREE.MeshBasicMaterial({
     color: PALETTE.gold,
@@ -1272,8 +1307,7 @@ function buildLanternVisual(safeRadius: number): LanternVisual {
     opacity: 0.95,
   });
   const fuelBarFill = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.11, 0.1), fuelBarMat);
-  fuelBarFill.position.y = 3.55;
-  group.add(fuelBarFill);
+  fuelBarGroup.add(fuelBarFill);
 
   const light = new THREE.PointLight(PALETTE.lanternLit, 0, 20);
   light.position.y = 2.5;
@@ -1299,6 +1333,7 @@ function buildLanternVisual(safeRadius: number): LanternVisual {
     core,
     coreMat,
     tearStrips,
+    fuelBarGroup,
     fuelBarBg,
     fuelBarFill,
     fuelBarMat,

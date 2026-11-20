@@ -504,6 +504,15 @@ if (params.get("bench") === "1" && appEl) {
       screenPause.classList.add("visible");
     }
   });
+
+  // Optional direct launch query (?night=1|2|3) for quick preview / showcase
+  const autoNight = Number(params.get("night"));
+  if (autoNight === 1 || autoNight === 2 || autoNight === 3) {
+    currentNight = autoNight;
+    hideAllOverlays();
+    hudRoot.classList.add("active");
+    client.startNight(autoNight);
+  }
 }
 
 function escapeHtml(text: string): string {

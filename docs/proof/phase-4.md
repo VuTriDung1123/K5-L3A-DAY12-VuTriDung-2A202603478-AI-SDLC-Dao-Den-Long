@@ -166,3 +166,12 @@ AFTER_LB: {
 ```
 
 Xác nhận: clone sạch chạy trọn vẹn trong đúng 3 lệnh (`npm ci`, `npm run build`, `npm start`), Bảng Xếp Hạng lưu ổn định xuống ổ đĩa và xuất đúng định dạng JSON `{"entries":[...]}` qua `--export-leaderboard`.
+
+### 5. Kiểm chứng trực quan 3D WebGL (`1280×720`) & Khắc phục lỗi UI/Map Đêm 3
+
+Sau khi người dùng phản hồi chụp màn hình phát hiện:
+1. **Lỗi UI `#mote-bar` đè lên `#subtitle-banner`:** Do lớp `.hud-card` đặt `position: fixed` làm tách `#mote-bar` khỏi luồng xếp dọc `#hud-bottom`. Đã gỡ `position: fixed` khỏi `.hud-card` (chỉ áp cho 5 khung góc cố định) để phụ đề, gợi ý tương tác và thanh đom đóm xếp chồng gọn gàng, không bao giờ đè nhau; đồng thời tinh chỉnh lề mũi tên chỉ hướng không chạm khung đồng hồ.
+2. **Lỗi hình học hiển thị Đêm 3 ("Đảo Chuông"):** Mặt sàn Tầng 1 cũ dùng `RingGeometry` xoay `-PI/2` quanh trục X làm lật sang nửa `z < 0` ngược với vật lý `maps.ts` (`z > 0`), khiến dốc `30°`/`150°` trông tách rời. Đã xây lại Tầng 1 bằng khối đặc `ExtrudeGeometry` chuẩn `z > 0` kiểu sàn gỗ *Kiyomizu-dera* có lan can son, lồng đèn *chōchin* treo gầm, 2 cầu thang dốc bậc đá có tay vịn + cổng *Senbon Torii*, và Tháp Chuông *Shōrō* 2 tầng mái cong trên Tầng 2.
+3. **Mở rộng tầm nhìn toàn cảnh Nhật Bản cổ đại (không làm thay đổi phạm vi vật lý Test Contract v1.3):** Bổ sung vòm trời shader đầy `1.350` ngôi sao, dải Ngân Hà (*Amanogawa*), Trăng rằm (*Tsuki*), Mặt Trời Bình Minh (*Asahi*) mọc dần sau đỉnh núi Phú Sĩ phủ tuyết, sao băng (*Nagareboshi*), mây *ukiyo-e*, vành đai 18 dãy núi + đảo chùa 5 tầng (*Gojū-no-tō*) xung quanh, hàng chục nhà *machiya* / trà quán *shoji* phát sáng và rừng cây *Sakura*, phong lá đỏ *Momiji*, thông đen, rặng tre dày đặc trên cả 3 Đêm (tắt hoàn toàn trong chế độ benchmark `benchScene.ts`).
+
+Đã chụp và kiểm tra trực quan qua Chrome `1280×720` cho cả Đêm 1, Đêm 2, Đêm 3 và chạy lại `npm run verify`: **33/33 tests pass, `21,600` ticks = `194 ms`, soak 3 Đêm `0 crashes`, Contract v1.3 nguyên vẹn**.
