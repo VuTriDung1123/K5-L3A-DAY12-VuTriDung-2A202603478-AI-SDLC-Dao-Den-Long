@@ -1,89 +1,114 @@
-# Đảo Đèn Lồng — Đèn Cạn Dầu (Day 12 AI SDLC)
+# Đảo Đèn Lồng — v1.0.0 Bình Minh (Day 12 AI SDLC)
+
+> **Video Demo (< 5 phút):** Đính kèm tại [GitHub Release `v1.0.0`](https://github.com/VuTriDung1123/K5-L3A-DAY12-VuTriDung-2A202603478-AI-SDLC-Dao-Den-Long/releases/tag/v1.0.0) (`demo.mp4` — xem trực tiếp không cần đăng nhập sau khi phát hành Release).
+
+![Minh họa Đảo Đèn Lồng — Ngôi làng đèn lồng đêm](docs/images/dao-den-long-showcase.jpg)
 
 - **Sinh viên:** Vũ Trí Dũng — **MSSV:** `2A202603478` — **Lớp:** `K5-L3A`
 - **Repository:** [K5-L3A-DAY12-VuTriDung-2A202603478-AI-SDLC-Dao-Den-Long](https://github.com/VuTriDung1123/K5-L3A-DAY12-VuTriDung-2A202603478-AI-SDLC-Dao-Den-Long)
-- **Contract:** Test Contract `v1.2` ([game.contract.json](game.contract.json))
-- **Công nghệ:** TypeScript + Three.js + Vite (3D WebGL) + Node.js `>=20` (Headless CLI) + Vitest
+- **Phiên bản:** `v1.0.0` · **Test Contract:** `v1.3` ([game.contract.json](game.contract.json))
+- **Công nghệ:** TypeScript + Three.js (WebGL2) + Vite + Node.js `>=20` (Headless CLI, Soak, Benchmark, Leaderboard Server) + Vitest
 
-> Điều khiển **Mây** giữ cho các Đèn Lồng Lớn trên **3 Hòn Đảo** (*Đảo Bến*, *Đảo Cau*, *Đảo Chuông*) cháy sáng tới tận **Bình Minh**! Đèn đã thắp sẽ hao dầu theo thời gian và bị Bóng Mực hút dầu khi yếu (`fuel < 30`) — hãy quan sát **Minimap**, dùng **Lướt**, **Tỏa Sáng**, châm thêm dầu và thắp lại đèn kịp thời.
+> Điều khiển **Mây** giữ cho các Đèn Lồng Lớn trên **3 Hòn Đảo** (*Đảo Bến*, *Đảo Cau*, *Đảo Chuông*) cháy sáng tới tận **Bình Minh**! Thu thập đom đóm, châm dầu trước khi đèn xuống dưới `30` (mất vùng an toàn và bị Bóng Mực hút dầu), né Gió Lạc, vượt cầu tre & gió mạnh, và ghi tên lên **Bảng Xếp Hạng**!
 
 ---
 
-## Cài đặt và chạy (tối đa 3 lệnh)
+## Yêu cầu hệ thống
+
+- **Node.js:** `>= 20.0.0` (kèm `npm`)
+- **Trình duyệt (chơi 3D & benchmark):** Chrome / Chromium / Edge / Firefox hỗ trợ WebGL2
+- **Docker (tùy chọn):** Docker Engine / Docker Desktop nếu muốn chạy đóng gói bằng container
+
+---
+
+## Cài đặt và chạy (đúng 3 lệnh)
 
 ```bash
 npm ci
 npm run build
-npm run dev
+npm start
 ```
 
-Mở URL Vite hiển thị (mặc định `http://localhost:5173`) để vào Menu chính và chơi đủ 3 Đêm.
+Mở trình duyệt tại **`http://localhost:4173`** để chơi ngay **Đảo Đèn Lồng v1.0.0** (có lưu Bảng Xếp Hạng cục bộ ra ổ đĩa `data/leaderboard.json`).
 
----
-
-## Điều khiển (3D)
-
-| Phím / Thao tác | Hành động |
-|---|---|
-| `W A S D` hoặc `↑ ↓ ← →` | Di chuyển theo hướng camera (`6.0 m/s`, `7.2 m/s` khi có Bùa Gió) |
-| `Space` | Nhảy (`7.0 m/s`) |
-| `Shift` | **Lướt (Dash)** `14 m/s` trong `0.2 s` (hồi chiêu `1.5 s`, có vệt bóng mờ & giữ nguyên độ cao trên không) |
-| `E` hoặc `F` | **Thắp mới (`10`) / Thắp lại (`5`) / Châm dầu (`+10 dầu/đom đóm`)** cho Đèn Lồng ở gần (`<= 2.0 m`) |
-| `Q` | **Tỏa Sáng** (tốn `3` đom đóm, bán kính 3D `5 m`, choáng `2 s` + đẩy lùi `4 m`, hồi chiêu `3 s`) |
-| Kéo chuột hoặc `J` / `L` (`C`: đưa về sau) | Xoay góc nhìn camera 3D |
-| `Esc` hoặc `P` | Tạm dừng / Mở menu tạm dừng & Cài đặt (Âm lượng, Độ nhạy chuột, **Chế độ Mù màu**) |
-
----
-
-## Luật chơi Phase 3 ("Đèn cạn dầu" — Contract v1.2)
-
-- **Nhiên liệu Đèn Lồng (`fuel`):**
-  - Khi vừa thắp mới (`10` đom đóm) hoặc thắp lại (`5` đom đóm với đèn `ever_lit: true`), đèn có `fuel = 100` và tự hao `1.0/giây` (`1/60` mỗi tick, tính bằng số nguyên `1/60`).
-  - Nhấn `E` ở đèn đang sáng chưa đầy dầu để **châm dầu** (`used = min(carried, ceil((100 - fuel) / 10))`).
-  - Khi `fuel <= 0`, đèn tắt (`lantern_out`) và ghi nhớ `ever_lit = true` (thắp lại chỉ cần `5` đom đóm).
-- **Bóng Mực hút dầu (`drain`):**
-  - Đèn có `fuel < 30` **mất vùng an toàn `6 m`** (nhấp nháy `1 Hz`). Bóng Mực ở `wander` ưu tiên tìm đèn sáng có `fuel < 30` gần nhất; khi vào `<= 2 m` chuyển sang `drain` hút `5 fuel/giây`.
-  - Khi châm dầu lên `>= 30`, vùng an toàn phục hồi và đẩy mọi Bóng Mực trong `6 m` ra mép trong `<= 30` tick.
-- **Sức chứa tăng dần (`capacity`):** `10 + 2 * successful_lights` (tối đa `20`), tăng mỗi lần thắp mới hoặc thắp lại thành công trong Đêm.
-- **Điều kiện thắng Bình Minh (`dawn_survived`):** Không còn thắng sớm. Sống sót tới hết giờ (`240 s / 270 s / 300 s`) và giữ số đèn đang sáng `>= ceil(0.6 * tổng đèn)` (Đêm 1: `3/5`, Đêm 2: `4/6`, Đêm 3: `5/7`).
-- **Cách tính điểm mới (Mục 5 Ticket-03):**
-  - Mỗi đom đóm nạp vào đèn (thắp mới, thắp lại hoặc châm dầu): `+5` điểm
-  - Thắp đèn lần đầu: `+100` điểm · Thắp lại đèn đã từng sáng: `+40` điểm
-  - Bóng Mực trúng Tỏa Sáng: `+5` điểm (`+15` điểm nếu ngay trước đó đang `drain` hút dầu)
-  - Thưởng Bình Minh (chỉ khi thắng): mỗi đèn đang sáng `+50 + floor(fuel)` · mỗi Ngọn Lửa còn lại `+50`.
-
----
-
-## Kiểm thử & Chế độ Headless (Test Contract v1.2)
+### Hoặc chạy nhanh bằng Docker
 
 ```bash
-# Chạy toàn bộ unit, contract sync, regression và Phase 2-3 feature tests
-npm test
-
-# Chạy chế độ headless (nhận --night 1 | 2 | 3)
-node dist-headless/headless/cli.js --seed 42 --night 1 --ticks 300 --out out.jsonl --snapshot-every 10
-
-# Chạy kiểm chứng tổng hợp (test + build + tất định 3 Đêm + benchmark 21.600 tick)
-npm run verify
+docker build -t dao-den-long:1.0.0 .
+docker run --rm -p 4173:4173 dao-den-long:1.0.0
 ```
 
 ---
 
-## Sáng tạo của tôi & Nâng cấp Đồ họa / UI Phase 3
+## Điều khiển & Khả năng tiếp cận (Accessibility)
 
-1. **Minimap Radar 2D trực quan (`#minimap-canvas`):** Hiển thị địa hình từng đảo (kể cả cầu tre Đêm 2 và 3 tầng Đêm 3), hướng nhìn của Mây, vị trí đom đóm, Bùa Gió, Bóng Mực, Gió Lạc và vòng cung lượng dầu của từng Đèn Lồng (nhấp nháy cảnh báo khi `fuel < 30`).
-2. **Thảm thực vật chuyển động, Bầu trời sao & Hiệu ứng động 3D (`src/render/worldDecor.ts`, `gameScene.ts`):** Hàng chục bụi cỏ đung đưa theo gió, cây liễu đèn lồng, rặng cau, cổng gỗ bến tàu, đường đá lát tới từng đèn, bầu trời 180 ngôi sao lấp lánh, vệt bóng mờ vàng kim khi Mây **Lướt (`Shift`)**, tia hút năng lượng tím/xanh khi Bóng Mực đang `drain` đèn, và thanh dầu 3D nổi phía trên mái đèn.
-3. **Chế độ Mù màu & Phân biệt không cần màu:** Cài đặt *"Bảng màu dễ phân biệt"* đổi viền/mắt Bóng Mực sang `#00B3FF`, cảnh báo UI sang `#FFFFFF` kèm `⚠`. Đèn tắt tự xẹp `20%` và có vết giấy rách chéo để nhận biết ngay cả khi không nhìn màu.
-4. **Cô lập tuyệt đối khỏi Test Contract:** Mọi nâng cấp đồ họa, minimap, cây cỏ và âm thanh đều nằm trong `src/render/`, không làm thay đổi bất kỳ dòng nào của đầu ra headless v1.2.
+Toàn bộ 9 phím điều khiển có thể **đổi tùy ý** trong **Cài đặt & Trợ năng** (có phát hiện trùng phím, tự động lưu và nút **Khôi phục mặc định**):
+
+| Hành động | Phím mặc định | Mô tả |
+|---|---|---|
+| Di chuyển | `W A S D` (hoặc `↑ ↓ ← →`) | Chạy theo góc nhìn camera (`6.0 m/s`, `7.2 m/s` khi có Bùa Gió) |
+| Nhảy | `Space` | Nhảy (`7.0 m/s`, trọng lực `-20 m/s²`) |
+| Lướt (Dash) | `Shift` | Lướt nhanh `14 m/s` trong `0.2 s` (hồi chiêu `1.5 s`, giữ độ cao trên không) |
+| Thắp / Châm dầu | `E` (hoặc `F`) | Nạp đom đóm thắp mới (`10`), thắp lại (`5`) hoặc châm dầu (`+10/đom đóm`) trong bán kính `2.0 m` |
+| Tỏa Sáng (Pulse) | `Q` | Tốn `3` đom đóm, bán kính 3D `5 m`, choáng `2 s` + đẩy lùi `4 m`, hồi chiêu `3 s` |
+| Xoay camera | Kéo chuột hoặc `J` / `L` (`C`: về sau) | Xoay camera 3D linh hoạt |
+| Tạm dừng | `Esc` (hoặc `P`) | Tạm dừng / mở cài đặt |
+
+**Tính năng Trợ năng tích hợp:**
+- **Phụ đề trực quan & Mũi tên hướng:** Hiển thị thông báo chữ rõ ràng cho Bóng Mực xuất hiện (kèm mũi tên hướng tím/xanh ở rìa màn hình), Gió Lạc, Gió mạnh Đêm 3, 10 giây cuối và cảnh báo đèn dầu `< 30`.
+- **Giảm chuyển động (Reduced Motion):** Tắt rung camera, chớp sáng, nhấp nháy HUD và hiệu ứng cánh hoa rơi.
+- **Chữ lớn (`×1.25`):** Cỡ chữ nền chuẩn tối thiểu `18px` ở `1280×720`, mở rộng lên `22.5px` khi bật Chữ lớn.
+- **Bảng màu dễ phân biệt (Mù màu):** Đổi viền/mắt Bóng Mực sang `#00B3FF`, cảnh báo sang `#FFFFFF` kèm biểu tượng `⚠`; đèn tắt xẹp `20%` kèm vết giấy rách để phân biệt không phụ thuộc màu sắc.
 
 ---
 
-## Tài liệu & Ghi chép SDLC
+## Kiểm thử, Headless, Benchmark, Soak & Xuất Bảng Xếp Hạng (Contract v1.3)
 
-- [game.contract.json](game.contract.json): Test Contract `v1.2` đồng bộ tự động với `DEFAULT_TUNING`.
-- [docs/notes/adr-phase-3.md](docs/notes/adr-phase-3.md): Quyết định kiến trúc (ADR) về máy trạng thái nhiên liệu đèn, Bóng Mực hút dầu và luật thắng Bình Minh.
-- [CHANGELOG.md](CHANGELOG.md): Liệt kê đầy đủ các thay đổi và **Breaking Changes** của Phase 3.
-- [AGENTS.md](AGENTS.md) & [.agents/skills/verify-and-proof/SKILL.md](.agents/skills/verify-and-proof/SKILL.md): Harness AI của dự án.
-- [docs/notes/spec-phase-2.md](docs/notes/spec-phase-2.md), [docs/notes/assumptions.md](docs/notes/assumptions.md), [docs/notes/ai-log.md](docs/notes/ai-log.md), [docs/notes/retro.md](docs/notes/retro.md).
-- [docs/proof/phase-0.md](docs/proof/phase-0.md), [docs/proof/phase-1.md](docs/proof/phase-1.md), [docs/proof/phase-2.md](docs/proof/phase-2.md), [docs/proof/phase-3.md](docs/proof/phase-3.md).
-- [CREDITS.md](CREDITS.md) · [LICENSE](LICENSE)
+```bash
+# 1. Chạy toàn bộ 33 unit tests, contract v1.3 sync, regression và Phase 1–4 tests
+npm test
+
+# 2. Kiểm chứng tổng hợp (test + build + ranh giới headless + tất định 3 Đêm + 21.600 tick + soak + export-leaderboard)
+npm run verify
+
+# 3. Chạy chế độ headless (Đêm 1 | 2 | 3)
+node dist-headless/headless/cli.js --seed 42 --night 1 --ticks 300 --out out.jsonl --snapshot-every 10
+
+# 4. Chạy Benchmark 3D chuẩn hóa (cửa sổ 1280×720, tắt vsync, 200 Bóng Mực, 100 đom đóm, L1–L3 sáng, 30 s đo)
+node scripts/bench.mjs --seed 42 --duration 30 --out bench.json
+
+# 5. Chạy Soak test 10 Đêm liên tiếp trong 1 tiến trình
+node dist-headless/headless/soak.js --seed 7 --nights 10 --out soak.json
+
+# 6. Xuất Bảng Xếp Hạng cục bộ ra JSON
+node scripts/run-game.mjs --export-leaderboard leaderboard-export.json
+```
+
+> **Lưu ý tắt VSync cho Benchmark:** `scripts/bench.mjs` khởi chạy Chrome/Chromium/Edge với cờ `--disable-frame-rate-limit --disable-gpu-vsync` ở chế độ cửa sổ `1280×720` (`vsync_off: true`). Nếu chạy trên môi trường có đường dẫn trình duyệt tùy biến, đặt biến môi trường `CHROME_PATH`.
+
+### Kết quả đo thực tế (đã commit tại `bench.json` & `soak.json`)
+
+| Bài đo | Chỉ số chính | Ngưỡng đạt | Kết quả thực tế |
+|---|---|---|---|
+| **3D Benchmark (`bench.json`, 30 s, `1280×720`)** | `avg_fps` / `p1_low_fps` / `load_ms` | `>= 60` / `>= 30` / `<= 10000 ms` | **`286.5 FPS` / `115.1 FPS` / `722 ms`** (`frame_ms_p95: 6.1 ms`, `8,595` frames, Intel UHD Graphics) |
+| **10-Night Soak (`soak.json`)** | `crashes` / `mem_end_mb / mem_start_mb` | `0` / `<= 1.20×` | **`0 crashes` / `51.3 → 57.9 MB` (`1.13×`)** |
+| **Headless 21,600 ticks (Đêm 3)** | Tổng thời gian mô phỏng | `<= 30,000 ms` | **`184 ms`** |
+
+---
+
+## Sáng tạo của tôi (Cô lập hoàn toàn khỏi Test Contract)
+
+1. **Ngôi làng đèn lồng cổ (`src/render/worldDecor.ts`):** Cảnh chơi thực tế được tô điểm bằng cổng *Torii* sơn son, nhà đền mái ngói phát ánh sáng ấm qua cửa giấy *shoji*, cây hoa anh đào nở rộ thả cánh hoa bay nhẹ (tự dừng khi bật Giảm chuyển động), rặng tre xanh, đèn đá *tōrō*, đường đá lát, ao nước lung linh và nón ánh sáng thể tích quanh các Đèn Lồng đang cháy.
+2. **Minimap Radar 2D & Trực quan hóa nhiên liệu:** Radar góc trái hiển thị hình dáng đảo/cầu tre/tầng bậc, hướng nhìn Mây, đom đóm, Bùa Gió, Bóng Mực, Gió Lạc và vòng cung dầu từng đèn.
+3. **Âm thanh ngũ cung tổng hợp thời gian thực (`src/render/audio.ts`):** Toàn bộ nhạc nền và hiệu ứng âm thanh sinh trực tiếp bằng Web Audio API, không phụ thuộc file media bên ngoài.
+4. **Đảm bảo tính công bằng & tất định:** Mọi cảnh vật sáng tạo chỉ sống trong `src/render/`, **tắt hoàn toàn trong chế độ Benchmark** (`src/render/benchScene.ts`) và không tồn tại trong `src/core/` hay `src/headless/` (ép bằng `tsconfig.headless.json` không có DOM).
+
+---
+
+## Tài liệu SDLC & Bằng chứng
+
+- [game.contract.json](game.contract.json) · [bench.json](bench.json) · [soak.json](soak.json)
+- [CHANGELOG.md](CHANGELOG.md) · [CREDITS.md](CREDITS.md) · [LICENSE](LICENSE) · [Dockerfile](Dockerfile)
+- **Harness AI:** [AGENTS.md](AGENTS.md) · [.agents/skills/verify-and-proof/SKILL.md](.agents/skills/verify-and-proof/SKILL.md) · [.github/workflows/ci.yml](.github/workflows/ci.yml)
+- **Ghi chép:** [docs/notes/assumptions.md](docs/notes/assumptions.md) · [docs/notes/spec-phase-2.md](docs/notes/spec-phase-2.md) · [docs/notes/adr-phase-3.md](docs/notes/adr-phase-3.md) · [docs/notes/ai-log.md](docs/notes/ai-log.md) · [docs/notes/retro.md](docs/notes/retro.md)
+- **Bằng chứng từng phase:** [phase-0.md](docs/proof/phase-0.md) · [phase-1.md](docs/proof/phase-1.md) · [phase-2.md](docs/proof/phase-2.md) · [phase-3.md](docs/proof/phase-3.md) · [phase-4.md](docs/proof/phase-4.md)

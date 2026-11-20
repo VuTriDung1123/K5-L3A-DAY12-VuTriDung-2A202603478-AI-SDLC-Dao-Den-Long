@@ -110,14 +110,14 @@ Tự kiểm:
 **Mục tiêu:** đưa sản phẩm đến mức phát hành được, đo được, cài đặt dễ.
 
 Gợi ý:
-- [ ] Đọc các yêu cầu có **số đo cụ thể** trong ticket. Với mỗi yêu cầu đo, chạy thật và lưu kết quả cùng cấu hình máy.
-- [ ] Làm sạch README: người khác clone sạch, làm theo, chạy được trong tối đa 3 lệnh.
-- [ ] Đảm bảo file bản quyền, ghi nguồn asset, giấy phép.
-- [ ] Tạo bản phát hành chạy được (file thực thi, thư mục web tĩnh hoặc Docker) và GitHub Release `v1.0.0`.
+- [x] Đọc các yêu cầu có **số đo cụ thể** trong ticket. Với mỗi yêu cầu đo, chạy thật và lưu kết quả cùng cấu hình máy. *(Đã chạy thật `bench.json`: 286.5 FPS / 115.1 1% low / 722 ms load; `soak.json`: 10 Đêm, 0 crashes, 51.3→57.9 MB; ghi đầy đủ cấu hình máy trong `docs/proof/phase-4.md`)*
+- [x] Làm sạch README: người khác clone sạch, làm theo, chạy được trong tối đa 3 lệnh. *(`npm ci`, `npm run build`, `npm start`)*
+- [x] Đảm bảo file bản quyền, ghi nguồn asset, giấy phép. *(`CREDITS.md`, `LICENSE`, `CHANGELOG.md`)*
+- [ ] Tạo bản phát hành chạy được (file thực thi, thư mục web tĩnh hoặc Docker) và GitHub Release `v1.0.0`. *(Đã có `dist/` web tĩnh + `Dockerfile`; chờ sinh viên push và tạo GitHub Release `v1.0.0`)*
 
 Tự kiểm:
-- [ ] Thử trên một thư mục sạch hoặc máy khác, không dùng cấu hình sẵn của bạn.
-- [ ] Đã gắn tag `phase-4` và tạo Release `v1.0.0`.
+- [x] Thử trên một thư mục sạch hoặc máy khác, không dùng cấu hình sẵn của bạn. *(Kiểm chứng clone sạch trong `docs/proof/phase-4.md`)*
+- [ ] Đã gắn tag `phase-4` và tạo Release `v1.0.0`. *(Đã gắn tag local `phase-4`; chờ sinh viên push và tạo Release `v1.0.0`)*
 
 ---
 
@@ -125,8 +125,8 @@ Tự kiểm:
 
 **Mục tiêu:** hoàn tất ghi chép, quay video, kiểm tra lần cuối, nộp.
 
-- [ ] **Retro ngắn:** điều gì hiệu quả hoặc không khi làm với AI; những lần AI sai và cách bạn phát hiện; harness nào giúp nhiều nhất; token/chi phí ước tính và cách bạn tiết kiệm; nếu làm lại thì đổi gì.
-- [ ] **Video demo `.mp4` dưới 5 phút**: chơi thử và cho thấy bằng chứng game chạy đúng. Đính kèm Release `v1.0.0` hoặc commit vào `docs/demo/demo.mp4` (dưới 100 MB). Đặt link ở đầu README.
-- [ ] Rà soát repo: không có `.env`, API key, token. Lịch sử git còn đủ file harness.
-- [ ] Rà soát bằng danh sách ở [SUBMISSION.md](SUBMISSION.md) mục "Checklist trước khi nộp".
+- [x] **Retro ngắn:** điều gì hiệu quả hoặc không khi làm với AI; những lần AI sai và cách bạn phát hiện; harness nào giúp nhiều nhất; token/chi phí ước tính và cách bạn tiết kiệm; nếu làm lại thì đổi gì. *(Hoàn thành tại `docs/notes/retro.md` và `docs/notes/ai-log.md`)*
+- [ ] **Video demo `.mp4` dưới 5 phút**: chơi thử và cho thấy bằng chứng game chạy đúng. Đính kèm Release `v1.0.0` hoặc commit vào `docs/demo/demo.mp4` (dưới 100 MB). Đặt link ở đầu README. *(Đã đặt sẵn link tới Release `v1.0.0` ở đầu `README.md`; sinh viên tự quay và đính kèm `demo.mp4`)*
+- [x] Rà soát repo: không có `.env`, API key, token. Lịch sử git còn đủ file harness.
+- [ ] Rà soát bằng danh sách ở [SUBMISSION.md](SUBMISSION.md) mục "Checklist trước khi nộp". *(Sinh viên kiểm tra lần cuối sau khi push, tạo Release `v1.0.0` và tải video)*
 - [ ] Nộp link repo public theo hướng dẫn của Coach.

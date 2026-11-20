@@ -109,5 +109,26 @@ Tài liệu này ghi nhận các giả định cho phần yêu cầu mơ hồ, c
   - Nếu `scenario.lanterns[]` đặt `fuel > 0` mà không truyền `lit`, đèn cũng ở trạng thái `lit = true, ever_lit = true`.
   - Đèn đặt sẵn `lit: true` qua `scenario` không tính vào `player.successful_lights` (trừ khi `scenario.player.successful_lights` được truyền tường minh).
 
-## Phase 4 (Ticket-04)
-*(Chờ phát hành Ticket-04.)*
+## Phase 4 (Ticket-04 — "Bình minh: phát hành v1.0.0" / Contract v1.3)
+
+### 1. Thiết kế & Giả định cho các yêu cầu Non-Functional & Phát hành
+- **Chế độ Benchmark (`scripts/bench.mjs` + `src/core/benchSim.ts` + `src/render/benchScene.ts`):**
+  - Mở cửa sổ Chrome/Chromium/Edge `1280×720` (`--app=... --window-size=1280,720`) với cờ `--disable-frame-rate-limit --disable-gpu-vsync` để tắt vsync (`vsync_off: true`) và cô lập profile tạm (`--user-data-dir=<tmp>`).
+  - Sử dụng `THREE.InstancedMesh` cho `200` Bóng Mực và `100` đom đóm, chỉ dựng Đêm 1 với ánh sáng chuẩn (tắt hoàn toàn cảnh vật sáng tạo trong `worldDecor.ts`) để đo công bằng và mượt `>= 60 FPS`.
+  - Thời gian tải `load_ms` đo từ lúc tiến trình `scripts/bench.mjs` bắt đầu tới khi nhận `POST /api/bench-first-frame` ngay sau khung hình WebGL đầu tiên.
+  - Bộ nhớ đỉnh `peak_mem_mb` tổng hợp Working Set / RSS của toàn bộ cây tiến trình trình duyệt gắn với `--user-data-dir` phiên benchmark.
+- **Soak Test 10 Đêm (`src/headless/soak.ts`):**
+  - Chạy liên tiếp 10 Đêm luân phiên `1 → 2 → 3` trong một tiến trình Node.js duy nhất; mỗi Đêm tạo `GameSimulation` mới với `seed = args.seed + i` và giải phóng (`sim = null`) ngay sau khi kết thúc.
+  - Ghi `mem_start_mb` từ `process.memoryUsage().rss` ngay sau khi khởi tạo Đêm 1 (`i === 0`) và `mem_end_mb` sau khi giải phóng Đêm cuối.
+- **Bảng Xếp Hạng cục bộ & Xuất CLI (`src/core/leaderboard.ts` + `scripts/run-game.mjs`):**
+  - `run_cmd` (`node scripts/run-game.mjs`) phục vụ bản build `dist/` qua HTTP kèm API `/api/leaderboard` ghi ra ổ đĩa tại `data/leaderboard.json` (tự tạo thư mục `data/`, đã thêm vào `.gitignore` để không rác git).
+  - Khi chạy `node scripts/run-game.mjs --export-leaderboard <out.json>`, tiến trình đọc `data/leaderboard.json`, sắp xếp Top 10 và ghi `{"entries": [...]}` rồi thoát mã `0` (trả `{"entries": []}` nếu chưa có lượt chơi nào).
+  - Tên người chơi hợp lệ: `3–12` ký tự gồm `[A-Za-z0-9_]` và chữ cái tiếng Việt có dấu; thời điểm `achieved_at` định dạng ISO 8601 có múi giờ địa phương (`±HH:MM`).
+- **Khả năng tiếp cận (Accessibility):**
+  - Đổi phím lưu qua `localStorage` cho đủ 9 hành động (`moveUp`, `moveDown`, `moveLeft`, `moveRight`, `jump`, `dash`, `interact`, `pulse`, `pause`), chặn phím trùng và có nút **"Khôi phục mặc định"**.
+  - Kích thước phông chữ chuẩn của toàn bộ HUD/Menu là `18px` (`--base-font: calc(18px * var(--ui-scale))`), bật **Chữ lớn** nâng `--ui-scale: 1.25` (`22.5px`).
+  - Phụ đề trực quan hiển thị cảnh báo Bóng Mực xuất hiện (kèm mũi tên tím/xanh ở rìa màn hình), Gió Lạc, Gió mạnh, 10 giây cuối và đèn dầu `< 30`.
+  - **Giảm chuyển động (Reduced Motion):** tắt rung camera, chớp vòng sáng, nhấp nháy CSS và cánh hoa rơi.
+- **Sáng tạo giao diện & Đóng gói:**
+  - Nâng cấp cảnh quan chơi thường (`src/render/worldDecor.ts`) theo phong cách làng đèn lồng cổ (cổng Torii sơn son, nhà đền mái ngói shoji, hoa anh đào rơi, rặng tre, đèn đá *tōrō*, ao nước, nón sáng đèn lồng) nhưng hoàn toàn cô lập khỏi `benchScene.ts` và `src/core/`.
+  - Đóng gói chạy trong 3 lệnh (`npm ci`, `npm run build`, `npm start`) kèm `Dockerfile` (`node:22-slim`, cổng `4173`).

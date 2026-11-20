@@ -1,6 +1,33 @@
 # Changelog
 
-Tài liệu ghi nhận các mốc phát triển và các thay đổi phá vỡ tương thích (Breaking Changes) qua từng phase.
+Tài liệu ghi nhận các mốc phát triển và các thay đổi phá vỡ tương thích (Breaking Changes) qua toàn bộ 4 phase từ `v0.0.0` đến phát hành chính thức `v1.0.0`.
+
+---
+
+## [1.0.0] - Phase 4 (Ticket-04 "Bình minh: phát hành v1.0.0" + Test Contract v1.3)
+
+### Tính năng phát hành & Non-Functional (Contract v1.3)
+1. **Nâng cấp `game.contract.json` lên `contract_version: "1.3"`:**
+   - Bổ sung `bench_cmd: "node scripts/bench.mjs"` và `soak_cmd: "node dist-headless/headless/soak.js"`.
+   - Cập nhật `run_cmd: "node scripts/run-game.mjs"` hỗ trợ vừa chạy game đã build vừa xuất bảng xếp hạng qua `--export-leaderboard <out.json>`.
+2. **Chế độ Benchmark 3D chuẩn hóa (`scripts/bench.mjs`, `src/core/benchSim.ts`, `src/render/benchScene.ts`):**
+   - Cửa sổ `1280×720` không toàn màn hình, tắt vsync (`--disable-frame-rate-limit --disable-gpu-vsync`), tải Đêm 1 với ánh sáng chuẩn (tắt trang trí sáng tạo thêm), đúng `200` Bóng Mực `wander` (seed `42`) và `100` đom đóm vẽ qua `InstancedMesh`, đèn `L1..L3` sáng `fuel: 100`, Mây đứng yên `(0,0,0)`, camera quay vòng tròn `r=30 m, Y=15 m` CCW từ `(30,15,0)` chu kỳ `15 s/vòng`, `3 s` khởi động + `--duration` giây đo, xuất `bench.json` và tự thoát mã `0`.
+3. **Soak Test ổn định dài hạn (`src/headless/soak.ts`):**
+   - Chạy liên tiếp 10 Đêm (luân phiên `1 → 2 → 3`) trong cùng một tiến trình Node.js với input ngẫu nhiên có seed (`seed + i`), đo RSS `mem_start_mb` và `mem_end_mb`, xuất `soak.json`.
+4. **Bảng Xếp Hạng cục bộ & Xuất CLI (`src/core/leaderboard.ts`, `scripts/run-game.mjs`, `src/main.ts`):**
+   - Nhập tên (`3–12` ký tự `[A-Za-z0-9_]` và chữ cái tiếng Việt) sau thắng Bình Minh (Đêm 3) hoặc sau khi thua bất kỳ Đêm nào.
+   - Lưu Top 10 trên ổ đĩa (`data/leaderboard.json`, kèm dự phòng `localStorage`), sắp xếp `score` giảm dần → `achieved_at` (ISO 8601 có múi giờ) tăng dần.
+   - Hỗ trợ `<run_cmd> --export-leaderboard <out.json>` xuất `{"entries": [...]}` và thoát mã `0`.
+5. **Khả năng tiếp cận (Accessibility):**
+   - Đổi phím cho đủ 9 hành động (`moveUp/Down/Left/Right`, `jump`, `dash`, `interact`, `pulse`, `pause`) kèm phát hiện phím trùng, lưu cài đặt và nút **"Khôi phục mặc định"**.
+   - Phụ đề trực quan (`#subtitle-banner`) + mũi tên rìa màn hình chỉ hướng Bóng Mực mới sinh (`#shade-arrow`), cảnh báo gió mạnh, 10 giây cuối, đèn dầu `< 30`.
+   - Tùy chọn **Giảm chuyển động (Reduced Motion)** tắt rung camera, chớp ánh sáng và nhấp nháy UI.
+   - Phông chữ tối thiểu `18px` tại `1280×720` kèm chế độ **Chữ lớn (`×1.25`)**.
+6. **Nâng cấp Đồ họa & Phong cách Làng Đèn Lồng Cổ (`src/render/worldDecor.ts`, `src/render/gameScene.ts`):**
+   - Bổ sung cổng Torii sơn son, nhà đền mái ngói shoji phát sáng ấm, cây hoa anh đào nở rộ kèm cánh hoa rơi nhẹ (tự dừng khi bật Giảm chuyển động), rặng tre, đèn đá *tōrō*, ao nước lung linh và nón sáng thể tích trên các Đèn Lồng đang cháy.
+   - Tất cả cảnh vật sáng tạo hoàn toàn nằm trong `src/render/worldDecor.ts`, tự tắt trong chế độ benchmark và không ảnh hưởng headless/soak.
+7. **Đóng gói & Tài liệu Phát hành:**
+   - Thêm `Dockerfile` chuẩn chạy trên cổng `4173`, hướng dẫn chạy `<= 3` lệnh (`npm ci`, `npm run build`, `npm start`), ảnh minh họa `docs/images/dao-den-long-showcase.jpg`, cập nhật `README.md`, `CREDITS.md`, `docs/notes/retro.md` và `docs/proof/phase-4.md`.
 
 ---
 
