@@ -5,12 +5,13 @@ import type {
   InputsConfig,
   JsonlEnd,
   JsonlLine,
+  NightNumber,
   ScenarioConfig,
 } from "./types.js";
 
 export interface HeadlessSessionOptions {
   seed: number;
-  night: number;
+  night: NightNumber;
   scenario?: ScenarioConfig;
   inputs?: InputsConfig;
   ticks: number;
@@ -22,7 +23,7 @@ export interface HeadlessSessionResult {
   end: JsonlEnd;
 }
 
-/** Runs a complete deterministic headless session according to Test Contract v1.0. */
+/** Runs a complete deterministic headless session according to Test Contract v1.1. */
 export function runHeadlessSession(options: HeadlessSessionOptions): HeadlessSessionResult {
   const snapshotEvery = options.snapshotEvery ?? 10;
   const frames = options.inputs?.frames ?? [];
@@ -39,6 +40,7 @@ export function runHeadlessSession(options: HeadlessSessionOptions): HeadlessSes
     interact: false,
     pulse: false,
     dash: false,
+    pause: false,
   };
 
   let frameCursor = 0;
@@ -46,7 +48,7 @@ export function runHeadlessSession(options: HeadlessSessionOptions): HeadlessSes
 
   let executedTicks = 0;
   for (let k = 0; k < options.ticks; k += 1) {
-    if (sim.state !== "playing") {
+    if (sim.isFinished()) {
       break;
     }
 
@@ -70,7 +72,7 @@ export function runHeadlessSession(options: HeadlessSessionOptions): HeadlessSes
       lines.push(sim.toSnapshot(executedTicks));
     }
 
-    if (sim.state !== "playing") {
+    if (sim.isFinished()) {
       break;
     }
   }
@@ -104,5 +106,8 @@ function applyFrame(target: ActiveInputState, frame: FrameInput): void {
   }
   if (frame.dash !== undefined) {
     target.dash = frame.dash;
+  }
+  if (frame.pause !== undefined) {
+    target.pause = frame.pause;
   }
 }

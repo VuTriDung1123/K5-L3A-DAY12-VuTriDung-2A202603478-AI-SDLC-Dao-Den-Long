@@ -25,6 +25,11 @@ export function distXZ(a: readonly [number, number, number], b: readonly [number
   return Math.hypot(a[0] - b[0], a[2] - b[2]);
 }
 
+/** Computes full 3D Euclidean distance between two 3D points. */
+export function dist3D(a: readonly [number, number, number], b: readonly [number, number, number]): number {
+  return Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
+}
+
 /** Checks whether horizontal XZ distance is <= radius (with float-drift epsilon). */
 export function withinRadiusXZ(
   a: readonly [number, number, number],
@@ -34,12 +39,11 @@ export function withinRadiusXZ(
   return distXZ(a, b) <= radius + BOUNDARY_EPS;
 }
 
-/** Clamps a 3D point inside a circular island radius in the XZ plane. */
-export function clampToRadiusXZ(x: number, z: number, maxRadius: number): [number, number] {
-  const len = Math.hypot(x, z);
-  if (len <= maxRadius || len === 0) {
-    return [x, z];
-  }
-  const scale = maxRadius / len;
-  return [x * scale, z * scale];
+/** Checks whether 3D Euclidean distance is <= radius (with float-drift epsilon). */
+export function withinRadius3D(
+  a: readonly [number, number, number],
+  b: readonly [number, number, number],
+  radius: number
+): boolean {
+  return dist3D(a, b) <= radius + BOUNDARY_EPS;
 }

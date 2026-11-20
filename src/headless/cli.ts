@@ -1,8 +1,8 @@
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
-import { createDefaultLanterns } from "../core/config.js";
 import { runHeadlessSession } from "../core/headlessRunner.js";
-import type { InputsConfig, ScenarioConfig } from "../core/types.js";
+import { getNightMapConfig } from "../core/maps.js";
+import type { InputsConfig, NightNumber, ScenarioConfig } from "../core/types.js";
 import {
   ContractFormatError,
   validateInputsConfig,
@@ -11,7 +11,7 @@ import {
 
 interface CliArgs {
   seed: number;
-  night: number;
+  night: NightNumber;
   scenarioPath?: string;
   inputsPath?: string;
   ticks: number;
@@ -37,9 +37,9 @@ function parseArgs(argv: string[]): CliArgs {
   }
 
   const seed = parseIntFlag(map.get("--seed"), "--seed");
-  const night = parseIntFlag(map.get("--night"), "--night");
-  if (night !== 1) {
-    throw new CliArgError(`Unsupported --night ${night} (Phase 1 supports --night 1)`);
+  const nightRaw = parseIntFlag(map.get("--night"), "--night");
+  if (nightRaw !== 1 && nightRaw !== 2 && nightRaw !== 3) {
+    throw new CliArgError(`Unsupported --night ${nightRaw} (Contract v1.1 supports 1, 2, 3)`);
   }
 
   const ticks = parseIntFlag(map.get("--ticks"), "--ticks");
@@ -61,7 +61,7 @@ function parseArgs(argv: string[]): CliArgs {
 
   return {
     seed,
-    night,
+    night: nightRaw,
     scenarioPath: map.get("--scenario"),
     inputsPath: map.get("--inputs"),
     ticks,
@@ -102,7 +102,8 @@ function readJsonFile(path: string, label: string): unknown {
 function main(): void {
   try {
     const args = parseArgs(process.argv.slice(2));
-    const validLanternIds = new Set(createDefaultLanterns().map((l) => l.id));
+    const mapCfg = getNightMapConfig(args.night);
+    const validLanternIds = new Set(mapCfg.lanterns.map((l) => l.id));
 
     let scenario: ScenarioConfig | undefined;
     if (args.scenarioPath) {
@@ -126,8 +127,11 @@ function main(): void {
     });
 
     mkdirSync(dirname(args.outPath), { recursive: true });
-    const payload = lines.map((line) => JSON.stringify(line)).join("\n") + "\n";
-    writeFileSync(args.outPath, payload, "utf8");
+    const chunks: string[] = [];
+    for (let i = 0; i < lines.length; i += 1) {
+      chunks.push(JSON.stringify(lines[i]));
+    }
+    writeFileSync(args.outPath, chunks.join("\n") + "\n", "utf8");
     process.exitCode = 0;
   } catch (error) {
     if (error instanceof ContractFormatError) {
