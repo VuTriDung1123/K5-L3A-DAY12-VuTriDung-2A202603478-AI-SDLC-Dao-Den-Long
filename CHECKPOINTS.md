@@ -43,13 +43,13 @@ Mỗi checkpoint phase (CP1 đến CP4) có cùng một khung, nhưng nội dung
 **Mục tiêu:** có môi trường làm việc và repo sẵn sàng. Nên chuẩn bị **trước** buổi lab nếu có thể. Nếu không, làm ngay đầu giờ Phase 1.
 
 Việc cần làm:
-- [ ] Tạo **repo cá nhân, public** trên GitHub, đặt tên theo [SUBMISSION.md](SUBMISSION.md).
-- [ ] Chọn công cụ AI, engine và ngôn ngữ. Cài và chạy thử một chương trình "hello" 3D hoặc headless để chắc môi trường ổn.
-- [ ] Đăng nhập claude.ai, mở lab board, thử mở tab Phase 1 và hỏi trợ giảng một câu bất kỳ để chắc trợ giảng hoạt động.
-- [ ] Tạo sẵn nơi ghi chép (một file hoặc một thư mục tùy bạn) cho giả định, nhật ký dùng AI và bằng chứng.
-- [ ] Kiểm tra hạn nộp từng phase theo thông báo của Coach.
+- [x] Tạo **repo cá nhân, public** trên GitHub, đặt tên theo [SUBMISSION.md](SUBMISSION.md). *(Đã xác nhận public HTTP 200: `K5-L3A-DAY12-VuTriDung-2A202603478-AI-SDLC-Dao-Den-Long`)*
+- [x] Chọn công cụ AI, engine và ngôn ngữ. Cài và chạy thử một chương trình "hello" 3D hoặc headless để chắc môi trường ổn. *(TypeScript + Three.js + Vite + Node.js + Vitest; bằng chứng tại `docs/proof/phase-0.md`)*
+- [ ] Đăng nhập claude.ai, mở lab board, thử mở tab Phase 1 và hỏi trợ giảng một câu bất kỳ để chắc trợ giảng hoạt động. *(Thao tác thủ công bằng tài khoản cá nhân)*
+- [x] Tạo sẵn nơi ghi chép (một file hoặc một thư mục tùy bạn) cho giả định, nhật ký dùng AI và bằng chứng. *(`docs/notes/`, `docs/proof/`)*
+- [ ] Kiểm tra hạn nộp từng phase theo thông báo của Coach. *(Kiểm tra trực tiếp từ Coach/LMS)*
 
-Tự kiểm: clone repo sang thư mục khác và chạy được chương trình thử.
+Tự kiểm: clone repo sang thư mục khác và chạy được chương trình thử. *(Đã kiểm trên `%TEMP%\cp0-clean-clone-check`, xem `docs/proof/phase-0.md`)*
 
 ---
 
