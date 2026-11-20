@@ -1,4 +1,4 @@
-import { SHADE_DEFAULT_Y } from "./config.js";
+import { DEFAULT_TUNING, SHADE_DEFAULT_Y } from "./config.js";
 import { round3 } from "./prng.js";
 import type { LanternState, NightNumber, Vec3 } from "./types.js";
 
@@ -59,19 +59,31 @@ function buildRingPoints(
   return pts;
 }
 
+function makeLantern(id: string, pos: Vec3): LanternState {
+  return {
+    id,
+    pos,
+    lit: false,
+    deposited: 0,
+    fuelTicks: 0,
+    ever_lit: false,
+    relit_count: 0,
+  };
+}
+
 /** Returns exact standardized map layout, spawn points, lanterns, and hazards for Night 1, 2, or 3. */
 export function getNightMapConfig(night: NightNumber): NightMapConfig {
   if (night === 1) {
     return {
       night: 1,
       name: "Đảo Bến",
-      durationS: 300,
+      durationS: DEFAULT_TUNING.night1_duration_s,
       lanterns: [
-        { id: "L1", pos: [0, 0, 25], lit: false, deposited: 0 },
-        { id: "L2", pos: [23.8, 0, 7.7], lit: false, deposited: 0 },
-        { id: "L3", pos: [14.7, 0, -20.2], lit: false, deposited: 0 },
-        { id: "L4", pos: [-14.7, 0, -20.2], lit: false, deposited: 0 },
-        { id: "L5", pos: [-23.8, 0, 7.7], lit: false, deposited: 0 },
+        makeLantern("L1", [0, 0, 25]),
+        makeLantern("L2", [23.8, 0, 7.7]),
+        makeLantern("L3", [14.7, 0, -20.2]),
+        makeLantern("L4", [-14.7, 0, -20.2]),
+        makeLantern("L5", [-23.8, 0, 7.7]),
       ],
       moteSpawns: [
         ...buildRingPoints(12, 0, 45, 0, 8),
@@ -92,14 +104,14 @@ export function getNightMapConfig(night: NightNumber): NightMapConfig {
     return {
       night: 2,
       name: "Đảo Cau",
-      durationS: 330,
+      durationS: DEFAULT_TUNING.night2_duration_s,
       lanterns: [
-        { id: "L1", pos: [0, 0, 20], lit: false, deposited: 0 },
-        { id: "L2", pos: [17, 0, -10], lit: false, deposited: 0 },
-        { id: "L3", pos: [-17, 0, -10], lit: false, deposited: 0 },
-        { id: "L4", pos: [70, 0, 20], lit: false, deposited: 0 },
-        { id: "L5", pos: [87, 0, -10], lit: false, deposited: 0 },
-        { id: "L6", pos: [53, 0, -10], lit: false, deposited: 0 },
+        makeLantern("L1", [0, 0, 20]),
+        makeLantern("L2", [17, 0, -10]),
+        makeLantern("L3", [-17, 0, -10]),
+        makeLantern("L4", [70, 0, 20]),
+        makeLantern("L5", [87, 0, -10]),
+        makeLantern("L6", [53, 0, -10]),
       ],
       moteSpawns: [
         ...buildRingPoints(10, 0, 90, 0, 4, 0, 0),
@@ -127,15 +139,15 @@ export function getNightMapConfig(night: NightNumber): NightMapConfig {
   return {
     night: 3,
     name: "Đảo Chuông",
-    durationS: 360,
+    durationS: DEFAULT_TUNING.night3_duration_s,
     lanterns: [
-      { id: "L1", pos: [0, 6, 6], lit: false, deposited: 0 },
-      { id: "L2", pos: [18, 3, 10], lit: false, deposited: 0 },
-      { id: "L3", pos: [-18, 3, 10], lit: false, deposited: 0 },
-      { id: "L4", pos: [35, 0, -10], lit: false, deposited: 0 },
-      { id: "L5", pos: [-35, 0, -10], lit: false, deposited: 0 },
-      { id: "L6", pos: [20, 0, -35], lit: false, deposited: 0 },
-      { id: "L7", pos: [-20, 0, -35], lit: false, deposited: 0 },
+      makeLantern("L1", [0, 6, 6]),
+      makeLantern("L2", [18, 3, 10]),
+      makeLantern("L3", [-18, 3, 10]),
+      makeLantern("L4", [35, 0, -10]),
+      makeLantern("L5", [-35, 0, -10]),
+      makeLantern("L6", [20, 0, -35]),
+      makeLantern("L7", [-20, 0, -35]),
     ],
     moteSpawns: [
       ...buildRingPoints(34, 0, 20, 0, 18),
@@ -156,7 +168,6 @@ export function getNightMapConfig(night: NightNumber): NightMapConfig {
   };
 }
 
-/** Checks if (x, z) lies on one of the two Night 3 radial ramps and returns its surface Y. */
 function getNight3RampY(x: number, z: number): number | null {
   for (const alpha of NIGHT3_RAMP_ANGLES_RAD) {
     const ux = Math.cos(alpha);
@@ -176,7 +187,6 @@ function getNight3RampY(x: number, z: number): number | null {
 export function isBlockedByObstacle(night: NightNumber, x: number, y: number, z: number): boolean {
   if (night !== 3) return false;
   const r = Math.hypot(x, z);
-  // Central bell tower on Tier 2 (radius 2m, Y in [6, 14])
   if (r < NIGHT3_TOWER_RADIUS - 1e-4 && y >= 5.5) {
     return true;
   }
@@ -199,7 +209,6 @@ export function getSupportGroundY(night: NightNumber, x: number, z: number, curr
     return onIslandA || onIslandB || onBridge ? 0 : null;
   }
 
-  // Night 3 multi-tier surfaces
   const r = Math.hypot(x, z);
   const candidates: number[] = [];
 
@@ -226,7 +235,7 @@ export function getSupportGroundY(night: NightNumber, x: number, z: number, curr
   return best;
 }
 
-/** Resolves horizontal player movement against solid cliffs and the Night 3 bell tower. */
+/** Resolves horizontal player movement against the Night 3 bell tower and obstacles. */
 export function resolvePlayerHorizontalMove(
   night: NightNumber,
   px: number,
@@ -241,9 +250,8 @@ export function resolvePlayerHorizontalMove(
 
   let rx = nx;
   let rz = nz;
-  // Push cleanly outside central bell tower if colliding at Tier 2 height
   const r = Math.hypot(rx, rz);
-  if (r < NIGHT3_TOWER_RADIUS && py >= 5.65) {
+  if (r < NIGHT3_TOWER_RADIUS && py >= 5.5) {
     if (r > 1e-6) {
       const scale = NIGHT3_TOWER_RADIUS / r;
       rx *= scale;
@@ -257,7 +265,6 @@ export function resolvePlayerHorizontalMove(
   if (!isBlockedByObstacle(night, rx, py, rz)) {
     return [rx, rz];
   }
-  // Axis slide against vertical walls
   if (!isBlockedByObstacle(night, rx, py, pz)) {
     return [rx, pz];
   }

@@ -72,7 +72,14 @@ try {
   const benchScenario = join(tmpDir, "bench-scenario.json");
   writeFileSync(
     benchScenario,
-    JSON.stringify({ player: { flames: 999 }, random_motes: true, random_shades: true, random_drifters: true, wind_enabled: true })
+    JSON.stringify({
+      time_left_s: 360,
+      player: { flames: 999 },
+      random_motes: true,
+      random_shades: true,
+      random_drifters: true,
+      wind_enabled: true,
+    })
   );
   const benchOut = join(tmpDir, "bench-21600.jsonl");
   const t0 = performance.now();
@@ -104,12 +111,18 @@ try {
   const first = lines[0];
   const last = lines[lines.length - 1];
 
-  if (first?.type !== "snapshot" || first?.night !== 3 || first?.lanterns?.length !== 7) {
-    console.error("Contract v1.1 check FAILED on Night 3 initial snapshot:", first);
+  if (
+    first?.type !== "snapshot" ||
+    first?.night !== 3 ||
+    first?.lanterns?.length !== 7 ||
+    typeof first?.lanterns?.[0]?.fuel !== "number" ||
+    typeof first?.player?.capacity !== "number"
+  ) {
+    console.error("Contract v1.2 check FAILED on Night 3 initial snapshot:", first);
     process.exit(1);
   }
   if (last?.type !== "end" || last?.ticks !== 21600) {
-    console.error("Contract v1.1 check FAILED on full 21,600-tick end line:", last);
+    console.error("Contract v1.2 check FAILED on full 21,600-tick end line:", last);
     process.exit(1);
   }
 

@@ -12,6 +12,12 @@ export function mulberry32(seed: number): () => number {
   };
 }
 
+/** Rounds to 1 decimal place and normalizes -0 to 0 (used for lantern fuel). */
+export function round1(value: number): number {
+  const rounded = Math.round(value * 10) / 10;
+  return rounded === 0 ? 0 : rounded;
+}
+
 /** Rounds to 3 decimal places and normalizes -0 to 0. */
 export function round3(value: number): number {
   const rounded = Math.round(value * 1000) / 1000;
