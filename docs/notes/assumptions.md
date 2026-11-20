@@ -88,8 +88,26 @@ Tài liệu này ghi nhận các giả định cho phần yêu cầu mơ hồ, c
    - Tạm dừng (`pause` toggle): đóng băng `sim_tick`, `time_left_s`, cooldown, TTL; phát `paused` & `resumed`.
 4. **Benchmark hiệu năng headless (`scripts/verify.mjs`):** Đo thời gian chạy `21,600` tick trên Đêm 3 (yêu cầu `<= 30 s`) và kiểm tra tính tất định ở cả 3 Đêm.
 
-## Phase 3 (Ticket-03)
-*(Chờ phát hành Ticket-03.)*
+## Phase 3 (Ticket-03 — Change Request "Đèn cạn dầu" / Contract v1.2)
+
+### 1. Danh sách luật cũ bị `[THAY THẾ]` và Test cũ được cập nhật (kèm lý do)
+
+| Luật / Test ở Phase 1–2 | Thay đổi ở Ticket-03 (Contract v1.2) | Cách cập nhật Test & Lý do |
+|---|---|---|
+| Đèn đã sáng không nhận thêm đom đóm, sáng vĩnh viễn (`tests/simulation.test.ts`) | Đèn sáng có `fuel = 100`, tự hao `1.0/s`; nhận châm dầu (`refuel`) khi `fuel < 100`; tắt (`lantern_out`) khi `fuel <= 0` và nhớ `ever_lit = true` (thắp lại tốn `5` đom đóm) | Cập nhật test nạp đèn trong `tests/simulation.test.ts` và thêm `tests/phase3Changes.test.ts` kiểm tra chuỗi `lit -> decay -> refuel -> lantern_out -> relight (cost 5)` vì luật cũ đã bị Ticket-03 Mục 1 thay thế. |
+| Bóng Mực không bao giờ vào vùng `safe_radius = 6 m` quanh đèn sáng (`tests/simulation.test.ts`) | Đèn có `fuel < 30` mất vùng an toàn (`fuel == 30` vẫn còn); Bóng `wander` tìm đèn sáng `fuel < 30` gần nhất, vào `<= 2 m` chuyển sang `drain` hút `5 fuel/s` | Giữ test chặn `safe_radius` cho đèn có `fuel >= 30` (`fuel = 100`), bổ sung test đèn `fuel < 30` mất vùng an toàn và Bóng vào hút dầu (`drain` + `fuel_drain`). |
+| Thắng sớm `all_lit` ngay khi thắp đủ đèn & thời lượng `300/330/360 s` (`tests/simulation.test.ts`) | Thời lượng mới `240/270/300 s`; bỏ `all_lit`; chỉ xét thắng `dawn_survived` khi sống sót tới hết giờ và số đèn đang sáng `>= ceil(0.6 * tổng đèn)` (`3/5`, `4/6`, `5/7`) | Cập nhật test thắng trong `tests/simulation.test.ts`: thắp đủ đèn không kết thúc sớm mà chạy tới bình minh đạt `dawn_survived`; thêm test hết giờ thiếu đèn -> thua `dawn`. |
+| Công thức điểm cũ (`+10`/đom đóm, `+2 * giây còn lại`) (`tests/simulation.test.ts`) | `+5`/đom đóm nạp hoặc châm dầu, `+100` thắp đầu, `+40` thắp lại, `+5` stun thường / `+15` stun Bóng đang `drain`, thưởng bình minh `+50 + floor(fuel)` mỗi đèn sáng + `+50` mỗi Ngọn Lửa (bỏ thưởng thời gian) | Cập nhật kỳ vọng điểm số trong `tests/simulation.test.ts` và `tests/phase3Changes.test.ts` theo bảng điểm Mục 5 Ticket-03. |
+| Hết choáng (`stunned`) quay lại `chase` nếu trong `18 m` | Ticket-03 Mục 2 quy định: `"Hết choáng thì về wander"` | Cập nhật logic kết thúc `stunned` về `wander` (sau đó trong bước di chuyển `wander`, nếu Mây trong `<= 12 m` mới chuyển sang `chase`, ngoài `12 m` sẽ đi tìm đèn yếu/đèn tắt). |
+
+### 2. Giả định chi tiết cho Phase 3
+- **Biểu diễn nhiên liệu nguyên `fuelTicks`:** Lưu `fuelTicks` nguyên theo đơn vị `1/60` (`fuel = 100` tương ứng `6000 fuelTicks`). Mỗi tick ở Bước 2: đèn sáng trừ `1` (`1/60`), mỗi Bóng đang `drain` đèn đó trừ thêm `5` (`5/60`). Khi xuất ra snapshot hoặc event (`refuel`, `fuel_drain`), làm tròn 1 chữ số thập phân: `Math.round((fuelTicks / 60) * 10) / 10`.
+- **Sự kiện `fuel_drain` mỗi 60 tick:** Mỗi Bóng ở trạng thái `drain` có bộ đếm `drainTicks` tăng `1` ở mỗi tick nó hút dầu tại Bước 2; khi `drainTicks % 60 === 0` thì phát sự kiện `fuel_drain { lantern_id, shade_id, fuel }`. Khi Bóng rời trạng thái `drain` thì `drainTicks` đặt lại về `0`.
+- **Tốc độ di chuyển ở trạng thái `wander`:** Bóng Mực ở `wander` di chuyển về đèn mục tiêu (`fuel < 30` gần nhất, hoặc đèn tắt gần nhất) với tốc độ chuẩn `shade_speed` (`4.0 m/s` ở Đêm 1–2, `4.5 m/s` ở Đêm 3), đảm bảo thời gian tiếp cận đèn khớp công thức vật lý.
+- **Kịch bản `scenario` cho đèn & người chơi:**
+  - Nếu `scenario.lanterns[]` đặt `lit: true` mà không truyền `fuel`, mặc định `fuel = 100` (`6000 fuelTicks`) và `ever_lit = true`.
+  - Nếu `scenario.lanterns[]` đặt `fuel > 0` mà không truyền `lit`, đèn cũng ở trạng thái `lit = true, ever_lit = true`.
+  - Đèn đặt sẵn `lit: true` qua `scenario` không tính vào `player.successful_lights` (trừ khi `scenario.player.successful_lights` được truyền tường minh).
 
 ## Phase 4 (Ticket-04)
 *(Chờ phát hành Ticket-04.)*

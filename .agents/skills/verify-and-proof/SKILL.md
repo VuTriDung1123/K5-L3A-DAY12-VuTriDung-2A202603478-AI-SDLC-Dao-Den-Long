@@ -15,11 +15,11 @@ description: Run automated verification (unit tests, headless build boundary che
    npm run verify
    ```
    Confirm all stages pass:
-   - `[1/5]` Vitest unit, contract sync (v1.1), and feature scenario tests (`npm test`)
+   - `[1/5]` Vitest unit, contract sync (v1.2), regression, and Phase 2/3 feature scenario tests (`npm test`)
    - `[2/5]` `tsc --noEmit`, `tsc -p tsconfig.headless.json` (DOM-free boundary), and `vite build`
    - `[3/5]` Determinism check across Nights 1, 2, and 3 (byte-identical JSONL across two runs)
    - `[4/5]` Full-night 21,600-tick headless performance benchmark completes in `<= 30s`
-   - `[5/5]` Contract schema validation on snapshots, events, and final `end` line
+   - `[5/5]` Contract v1.2 schema validation on snapshots (`fuel`, `ever_lit`, `relit_count`, `capacity`), events, and final `end` line
 2. **Run phase-specific Test Contract scenarios:**
    Execute targeted scenario checks via `node dist-headless/headless/cli.js --night <1|2|3> ...` and capture verbatim outputs.
 3. **Record honest evidence:**
