@@ -51,7 +51,8 @@ Toàn bộ 9 phím điều khiển có thể **đổi tùy ý** trong **Cài đ�
 | Lướt (Dash) | `Shift` | Lướt nhanh `14 m/s` trong `0.2 s` (hồi chiêu `1.5 s`, giữ độ cao trên không) |
 | Thắp / Châm dầu | `E` (hoặc `F`) | Nạp đom đóm thắp mới (`10`), thắp lại (`5`) hoặc châm dầu (`+10/đom đóm`) trong bán kính `2.0 m` |
 | Tỏa Sáng (Pulse) | `Q` | Tốn `3` đom đóm, bán kính 3D `5 m`, choáng `2 s` + đẩy lùi `4 m`, hồi chiêu `3 s` |
-| Xoay camera | Kéo chuột hoặc `J` / `L` (`C`: về sau) | Xoay camera 3D linh hoạt |
+| Xoay camera | Kéo chuột hoặc `J` / `L` (`C`: về sau) | Xoay camera 3D linh hoạt (kéo dọc để ngước/cúi ở góc nhìn thứ 1) |
+| Đổi góc nhìn | `V` (hoặc Menu / Cài đặt) | Chuyển mượt giữa **Góc nhìn thứ 3** và **Góc nhìn thứ 1** (cầm đèn lồng trên tay) |
 | Tạm dừng | `Esc` (hoặc `P`) | Tạm dừng / mở cài đặt |
 
 **Tính năng Trợ năng tích hợp:**
@@ -98,10 +99,14 @@ node scripts/run-game.mjs --export-leaderboard leaderboard-export.json
 
 ## Sáng tạo của tôi (Cô lập hoàn toàn khỏi Test Contract)
 
-1. **Ngôi làng đèn lồng cổ (`src/render/worldDecor.ts`):** Cảnh chơi thực tế được tô điểm bằng cổng *Torii* sơn son, nhà đền mái ngói phát ánh sáng ấm qua cửa giấy *shoji*, cây hoa anh đào nở rộ thả cánh hoa bay nhẹ (tự dừng khi bật Giảm chuyển động), rặng tre xanh, đèn đá *tōrō*, đường đá lát, ao nước lung linh và nón ánh sáng thể tích quanh các Đèn Lồng đang cháy.
-2. **Minimap Radar 2D & Trực quan hóa nhiên liệu:** Radar góc trái hiển thị hình dáng đảo/cầu tre/tầng bậc, hướng nhìn Mây, đom đóm, Bùa Gió, Bóng Mực, Gió Lạc và vòng cung dầu từng đèn.
-3. **Âm thanh ngũ cung tổng hợp thời gian thực (`src/render/audio.ts`):** Toàn bộ nhạc nền và hiệu ứng âm thanh sinh trực tiếp bằng Web Audio API, không phụ thuộc file media bên ngoài.
-4. **Đảm bảo tính công bằng & tất định:** Mọi cảnh vật sáng tạo chỉ sống trong `src/render/`, **tắt hoàn toàn trong chế độ Benchmark** (`src/render/benchScene.ts`) và không tồn tại trong `src/core/` hay `src/headless/` (ép bằng `tsconfig.headless.json` không có DOM).
+1. **Ngôi làng đèn lồng cổ Nhật Bản & Bầu trời sao (`src/render/worldDecor.ts`):** Toàn cảnh quần đảo Nhật Bản cổ đại với núi Phú Sĩ phủ tuyết, 18 dãy núi, 6 đảo chùa 5 tầng (*Gojū-no-tō*), cổng *Torii* sơn son, nhà *machiya* / trà quán cửa *shoji* phát sáng, rừng hoa anh đào (*Sakura*), phong lá đỏ (*Momiji*), thông đen, rặng tre, đèn đá *tōrō*, hồ sen; bầu trời shader có `1.350` vì sao + Ngân Hà (*Amanogawa*), Trăng rằm (*Tsuki*), Mặt Trời Bình Minh (*Asahi*) và sao băng (*Nagareboshi*).
+2. **Nhân vật Mây có tay chân sinh động, NPC dân làng & Góc nhìn Thứ 1 / Thứ 3 (`src/render/gameScene.ts`, `worldDecor.ts`):**
+   - Nhân vật Mây dựng đầy đủ tay áo kimono, chân, guốc gỗ *geta*, đai *obi*, khăn quàng bay, mắt sáng, nón lá và gậy cầm đèn lồng đung đưa theo bước chạy/nhảy.
+   - Dân làng NPC (Ông Đăng, vu nữ *Miko*, người làng, trẻ cầm đèn) dạo bước sinh động quanh các lối đá và nhà đền trên cả 3 Đêm.
+   - Phím `V` (hoặc nút trên Menu/Cài đặt) chuyển tức thì giữa **Góc nhìn thứ 3** và **Góc nhìn thứ 1** (có đèn lồng cầm tay đung đưa); Menu chính hiển thị trực tiếp nền 3D ngôi làng quay chậm.
+3. **Minimap Radar 2D & Trực quan hóa nhiên liệu:** Radar góc trái hiển thị hình dáng đảo/cầu tre/tầng bậc & 2 đường dốc Đêm 3, hướng nhìn Mây, đom đóm, Bùa Gió, Bóng Mực, Gió Lạc và vòng cung dầu từng đèn.
+4. **Âm thanh ngũ cung tổng hợp thời gian thực (`src/render/audio.ts`):** Toàn bộ nhạc nền và hiệu ứng âm thanh sinh trực tiếp bằng Web Audio API, không phụ thuộc file media bên ngoài.
+5. **Đảm bảo tính công bằng & tất định:** Mọi cảnh vật sáng tạo và NPC chỉ sống trong `src/render/`, **tắt hoàn toàn trong chế độ Benchmark** (`src/render/benchScene.ts`) và không tồn tại trong `src/core/` hay `src/headless/` (ép bằng `tsconfig.headless.json` không có DOM).
 
 ---
 

@@ -906,6 +906,9 @@ export function buildNightWorld(scene: THREE.Scene, map: NightMapConfig): WorldV
     leaves.push(leaf);
   }
 
+  // Friendly strolling Ancient Japanese village NPCs (Ong Dang, Shrine Maidens, Villagers)
+  const npcs = populateVillageNPCs(group, map, mats);
+
   return {
     group,
     update(
@@ -916,6 +919,33 @@ export function buildNightWorld(scene: THREE.Scene, map: NightMapConfig): WorldV
       litRatio = 0
     ): void {
       const motionMult = reducedMotion ? 0.15 : 1.0;
+
+      // Animate strolling NPC villagers (smooth circular/figure-8 village walks, swinging arms & legs)
+      for (const npc of npcs) {
+        if (reducedMotion) {
+          npc.leftLeg.rotation.x = 0;
+          npc.rightLeg.rotation.x = 0;
+          npc.leftArm.rotation.x = 0;
+          continue;
+        }
+        const a = npc.baseAngle + elapsedSec * npc.angularSpeed;
+        const rNow = npc.orbitRadius + Math.sin(a * 2 + npc.phase) * npc.wobbleAmp;
+        const nx = npc.centerX + Math.cos(a) * rNow;
+        const nz = npc.centerZ + Math.sin(a) * rNow;
+        const nextA = a + 0.05 * Math.sign(npc.angularSpeed || 1);
+        const rNext = npc.orbitRadius + Math.sin(nextA * 2 + npc.phase) * npc.wobbleAmp;
+        const dx = npc.centerX + Math.cos(nextA) * rNext - nx;
+        const dz = npc.centerZ + Math.sin(nextA) * rNext - nz;
+
+        const stride = Math.sin(elapsedSec * 6.5 + npc.phase);
+        npc.root.position.set(nx, npc.baseY + Math.abs(stride) * 0.045, nz);
+        npc.root.rotation.y = Math.atan2(dx, dz);
+        npc.leftLeg.rotation.x = stride * 0.52;
+        npc.rightLeg.rotation.x = -stride * 0.52;
+        npc.leftArm.rotation.x = -stride * 0.44;
+        npc.rightArm.rotation.x = -0.55 + stride * 0.14;
+        npc.lantern.rotation.z = Math.sin(elapsedSec * 4.5 + npc.phase) * 0.16;
+      }
 
       // Update sky dome & rising Dawn Sun smoothly as Dawn approaches and lanterns light up
       const combinedDawn = Math.min(1, dawnProgress * 0.72 + litRatio * 0.28);
@@ -1824,4 +1854,216 @@ function populateGrassLogsAndRocks(
       group.add(log);
     }
   }
+}
+
+interface VillageNpc {
+  root: THREE.Group;
+  leftLeg: THREE.Group;
+  rightLeg: THREE.Group;
+  leftArm: THREE.Group;
+  rightArm: THREE.Group;
+  lantern: THREE.Group;
+  centerX: number;
+  centerZ: number;
+  baseY: number;
+  orbitRadius: number;
+  wobbleAmp: number;
+  baseAngle: number;
+  angularSpeed: number;
+  phase: number;
+}
+
+interface NpcStyle {
+  robeColor: number;
+  sashColor: number;
+  hatKind: "kasa" | "bun" | "elder";
+  scale: number;
+}
+
+const NPC_STYLES: NpcStyle[] = [
+  { robeColor: 0x2a4570, sashColor: 0xf2c14e, hatKind: "elder", scale: 1.08 }, // Ong Dang (Indigo Haori)
+  { robeColor: 0xf5efe6, sashColor: 0xc8182e, hatKind: "bun", scale: 0.96 }, // Shrine Maiden (Miko)
+  { robeColor: 0x6b3b5c, sashColor: 0xffb7d5, hatKind: "bun", scale: 0.94 }, // Sakura Villager
+  { robeColor: 0x3b6656, sashColor: 0xd4be94, hatKind: "kasa", scale: 1.0 }, // Traveler
+  { robeColor: 0x8f3430, sashColor: 0xf2c14e, hatKind: "kasa", scale: 0.98 }, // Festival Keeper
+  { robeColor: 0x354d6e, sashColor: 0x8fa3b8, hatKind: "bun", scale: 0.85 }, // Little Lantern Child
+];
+
+/** Builds friendly animated Ancient Japanese NPC villagers strolling peacefully across the island. */
+function populateVillageNPCs(
+  group: THREE.Group,
+  map: NightMapConfig,
+  mats: PaletteMaterials
+): VillageNpc[] {
+  const npcs: VillageNpc[] = [];
+  const routes: Array<{
+    cx: number;
+    cz: number;
+    r: number;
+    wobble: number;
+    angle: number;
+    speed: number;
+    styleIdx: number;
+  }> =
+    map.night === 1
+      ? [
+          { cx: 0, cz: 0, r: 9.2, wobble: 0.8, angle: 0.4, speed: 0.14, styleIdx: 0 },
+          { cx: 0, cz: 0, r: 14.5, wobble: 1.1, angle: 2.1, speed: -0.11, styleIdx: 1 },
+          { cx: 0, cz: 0, r: 19.0, wobble: 1.3, angle: 3.9, speed: 0.095, styleIdx: 2 },
+          { cx: 0, cz: 0, r: 22.0, wobble: 1.2, angle: 5.2, speed: -0.085, styleIdx: 3 },
+          { cx: 0, cz: 0, r: 29.0, wobble: 1.0, angle: 1.1, speed: 0.075, styleIdx: 4 },
+          { cx: 0, cz: 0, r: 16.5, wobble: 0.9, angle: 4.7, speed: 0.12, styleIdx: 5 },
+          { cx: 0, cz: 0, r: 28.5, wobble: 1.1, angle: 3.1, speed: -0.08, styleIdx: 1 },
+        ]
+      : map.night === 2
+        ? [
+            { cx: 0, cz: 0, r: 8.5, wobble: 0.7, angle: 0.5, speed: 0.15, styleIdx: 0 },
+            { cx: 0, cz: 0, r: 14.2, wobble: 0.9, angle: 2.4, speed: -0.11, styleIdx: 1 },
+            { cx: 0, cz: 0, r: 15.8, wobble: 0.8, angle: 4.5, speed: 0.1, styleIdx: 2 },
+            { cx: 0, cz: 0, r: 11.2, wobble: 0.6, angle: 3.6, speed: -0.13, styleIdx: 5 },
+            { cx: 70, cz: 0, r: 8.5, wobble: 0.7, angle: 1.1, speed: -0.14, styleIdx: 3 },
+            { cx: 70, cz: 0, r: 14.2, wobble: 0.9, angle: 3.2, speed: 0.11, styleIdx: 4 },
+            { cx: 70, cz: 0, r: 16.0, wobble: 0.8, angle: 5.1, speed: -0.1, styleIdx: 1 },
+            { cx: 70, cz: 0, r: 11.4, wobble: 0.6, angle: 0.2, speed: 0.12, styleIdx: 2 },
+          ]
+        : [
+            { cx: 0, cz: 0, r: 9.8, wobble: 0.5, angle: 0.6, speed: 0.13, styleIdx: 0 },
+            { cx: 0, cz: 0, r: 15.5, wobble: 0.8, angle: -1.2, speed: -0.1, styleIdx: 1 },
+            { cx: 0, cz: 0, r: 27.5, wobble: 1.0, angle: -0.5, speed: 0.08, styleIdx: 2 },
+            { cx: 0, cz: 0, r: 28.5, wobble: 1.0, angle: -2.4, speed: -0.085, styleIdx: 3 },
+            { cx: 0, cz: 0, r: 32.0, wobble: 1.1, angle: 1.5, speed: 0.075, styleIdx: 4 },
+            { cx: 0, cz: 0, r: 32.5, wobble: 1.1, angle: 3.8, speed: -0.07, styleIdx: 5 },
+            { cx: 0, cz: 0, r: 18.0, wobble: 0.7, angle: -2.0, speed: 0.1, styleIdx: 1 },
+            { cx: 0, cz: 0, r: 35.5, wobble: 0.8, angle: -1.5, speed: 0.065, styleIdx: 2 },
+          ];
+
+  const skinMat = new THREE.MeshStandardMaterial({ color: 0xf6d8bc, roughness: 0.8 });
+  const hairMat = new THREE.MeshStandardMaterial({ color: 0x1b1a24, roughness: 0.85 });
+  const beardMat = new THREE.MeshStandardMaterial({ color: 0xeaeef5, roughness: 0.8 });
+  const pantsMat = new THREE.MeshStandardMaterial({ color: 0x222638, roughness: 0.88 });
+  const sandalMat = new THREE.MeshStandardMaterial({ color: 0x7d5738, roughness: 0.85 });
+
+  routes.forEach((rt, idx) => {
+    const style = NPC_STYLES[rt.styleIdx % NPC_STYLES.length];
+    const robeMat = new THREE.MeshStandardMaterial({ color: style.robeColor, roughness: 0.78 });
+    const sashMat = new THREE.MeshStandardMaterial({ color: style.sashColor, roughness: 0.65 });
+
+    const root = new THREE.Group();
+
+    // Articulated Legs
+    const makeLeg = (sx: number): THREE.Group => {
+      const hip = new THREE.Group();
+      hip.position.set(sx, 0.44, 0);
+      const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.07, 0.4, 8), pantsMat);
+      leg.position.y = -0.18;
+      hip.add(leg);
+      const sandal = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.07, 0.24), sandalMat);
+      sandal.position.set(0, -0.4, 0.04);
+      hip.add(sandal);
+      return hip;
+    };
+    const leftLeg = makeLeg(-0.14);
+    const rightLeg = makeLeg(0.14);
+    root.add(leftLeg, rightLeg);
+
+    // Kimono Robe & Obi Sash
+    const skirt = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.34, 0.62, 12), robeMat);
+    skirt.position.y = 0.56;
+    root.add(skirt);
+    const chest = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.23, 0.42, 12), robeMat);
+    chest.position.y = 1.02;
+    root.add(chest);
+    const obi = new THREE.Mesh(new THREE.CylinderGeometry(0.245, 0.255, 0.16, 12), sashMat);
+    obi.position.y = 0.84;
+    root.add(obi);
+
+    // Articulated Arms
+    const makeArm = (sx: number): THREE.Group => {
+      const sh = new THREE.Group();
+      sh.position.set(sx, 1.15, 0);
+      const sleeve = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.13, 0.38, 8), robeMat);
+      sleeve.position.y = -0.18;
+      sh.add(sleeve);
+      const hand = new THREE.Mesh(new THREE.SphereGeometry(0.07, 8, 8), skinMat);
+      hand.position.y = -0.4;
+      sh.add(hand);
+      return sh;
+    };
+    const leftArm = makeArm(-0.28);
+    const rightArm = makeArm(0.28);
+    root.add(leftArm, rightArm);
+
+    // Warm glowing handheld paper lantern held in right hand
+    const lantern = new THREE.Group();
+    lantern.position.set(0, -0.42, 0.22);
+    const stick = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.02, 0.46, 6), mats.woodDark);
+    stick.rotation.x = Math.PI / 2.4;
+    stick.position.set(0, 0.05, 0.08);
+    lantern.add(stick);
+    const bulb = new THREE.Mesh(
+      new THREE.SphereGeometry(0.13, 8, 8),
+      idx % 2 === 0 ? mats.shoji : mats.chochin
+    );
+    bulb.scale.set(0.85, 1.2, 0.85);
+    bulb.position.set(0, -0.14, 0.25);
+    lantern.add(bulb);
+    rightArm.add(lantern);
+
+    // Head + Face + Hat/Hair
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.2, 12, 12), skinMat);
+    head.position.y = 1.4;
+    root.add(head);
+
+    if (style.hatKind === "elder") {
+      const beard = new THREE.Mesh(new THREE.ConeGeometry(0.11, 0.24, 8), beardMat);
+      beard.rotation.x = Math.PI;
+      beard.position.set(0, 1.24, 0.16);
+      root.add(beard);
+      const hat = new THREE.Mesh(new THREE.ConeGeometry(0.56, 0.26, 16), mats.sand);
+      hat.position.y = 1.62;
+      root.add(hat);
+    } else if (style.hatKind === "kasa") {
+      const hat = new THREE.Mesh(new THREE.ConeGeometry(0.52, 0.25, 16), mats.sand);
+      hat.position.y = 1.6;
+      root.add(hat);
+    } else {
+      const hair = new THREE.Mesh(new THREE.SphereGeometry(0.215, 12, 10), hairMat);
+      hair.position.set(0, 1.44, -0.03);
+      root.add(hair);
+      const bun = new THREE.Mesh(new THREE.SphereGeometry(0.1, 8, 8), hairMat);
+      bun.position.set(0, 1.62, -0.12);
+      root.add(bun);
+      const pin = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.34, 6), mats.torii);
+      pin.rotation.z = 1.2;
+      pin.position.set(0, 1.62, -0.12);
+      root.add(pin);
+    }
+
+    root.scale.setScalar(style.scale);
+    root.position.set(
+      rt.cx + Math.cos(rt.angle) * rt.r,
+      0,
+      rt.cz + Math.sin(rt.angle) * rt.r
+    );
+    group.add(root);
+
+    npcs.push({
+      root,
+      leftLeg,
+      rightLeg,
+      leftArm,
+      rightArm,
+      lantern,
+      centerX: rt.cx,
+      centerZ: rt.cz,
+      baseY: 0,
+      orbitRadius: rt.r,
+      wobbleAmp: rt.wobble,
+      baseAngle: rt.angle,
+      angularSpeed: rt.speed,
+      phase: idx * 1.37,
+    });
+  });
+
+  return npcs;
 }

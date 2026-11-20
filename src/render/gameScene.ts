@@ -1,9 +1,12 @@
 import * as THREE from "three";
 import { FIXED_DT, TICK_RATE } from "../core/config.js";
+import { getNightMapConfig } from "../core/maps.js";
 import { GameSimulation } from "../core/simulation.js";
 import type { ActiveInputState, NightNumber, ScoreBreakdown } from "../core/types.js";
 import { SoundBank } from "./audio.js";
 import { buildNightWorld, type WorldVisualHandle } from "./worldDecor.js";
+
+export type CameraMode = "third" | "first";
 
 export interface KeyBindings {
   moveUp: string;
@@ -35,6 +38,7 @@ export interface UserSettings {
   colorblindMode: boolean;
   reducedMotion: boolean;
   largeText: boolean;
+  cameraMode: CameraMode;
   keyBindings: KeyBindings;
 }
 
@@ -48,6 +52,7 @@ export interface GameUiCallbacks {
     reason: string | null;
   }): void;
   onPauseToggled(paused: boolean): void;
+  onCameraModeChanged?(mode: CameraMode): void;
 }
 
 export interface HudElements {
@@ -65,6 +70,7 @@ export interface HudElements {
   moteBarEl: HTMLElement;
   cdDashEl: HTMLElement;
   cdPulseEl: HTMLElement;
+  cdCameraEl: HTMLElement;
   lanternArrowEl: HTMLElement;
   shadeArrowEl: HTMLElement;
   minimapCanvas: HTMLCanvasElement;
@@ -138,6 +144,7 @@ export class DaoDenLongClient {
   private readonly hemiLight: THREE.HemisphereLight;
 
   private worldHandle: WorldVisualHandle | null = null;
+  private menuShowcaseActive = false;
   private sim: GameSimulation | null = null;
   private settings: UserSettings = {
     volume: 0.7,
@@ -145,10 +152,12 @@ export class DaoDenLongClient {
     colorblindMode: false,
     reducedMotion: false,
     largeText: false,
+    cameraMode: "third",
     keyBindings: { ...DEFAULT_KEY_BINDINGS },
   };
 
   private readonly playerGroup = buildMayMesh();
+  private readonly fpLanternRig = buildFirstPersonLanternRig();
   private readonly dashTrailMeshes: THREE.Mesh[] = [];
   private readonly dashTrailHistory: Array<[number, number, number]> = [];
   private readonly pulseRing: THREE.Mesh;
@@ -163,8 +172,10 @@ export class DaoDenLongClient {
 
   private readonly keys = new Set<string>();
   private camYawDeg = 0;
+  private camPitchDeg = 0;
   private dragging = false;
   private lastPointerX = 0;
+  private lastPointerY = 0;
   private accumulator = 0;
   private lastPerf = performance.now();
   private startPerf = performance.now();
@@ -227,6 +238,9 @@ export class DaoDenLongClient {
     this.scene.add(dawnRim);
 
     this.scene.add(this.playerGroup.root);
+    this.camera.add(this.fpLanternRig.root);
+    this.fpLanternRig.root.visible = false;
+    this.scene.add(this.camera);
 
     const ghostGeo = new THREE.ConeGeometry(0.38, 0.9, 10);
     for (let i = 0; i < 4; i += 1) {
@@ -275,13 +289,40 @@ export class DaoDenLongClient {
     document.body.classList.toggle("large-text", settings.largeText);
   }
 
+  /** Loads a scenic animated 3D Japanese village panorama behind the Main Menu. */
+  startMenuShowcase(): void {
+    if (this.sim) return;
+    this.worldHandle?.dispose();
+    const map1 = getNightMapConfig(1);
+    this.worldHandle = buildNightWorld(this.scene, map1);
+    this.menuShowcaseActive = true;
+    this.playerGroup.root.visible = true;
+    this.playerGroup.root.position.set(0, 0, 0);
+    this.playerGroup.root.rotation.y = 0;
+    this.fpLanternRig.root.visible = false;
+    this.ambientLight.intensity = 0.56;
+  }
+
+  toggleCameraMode(): void {
+    const next: CameraMode = this.settings.cameraMode === "third" ? "first" : "third";
+    this.settings.cameraMode = next;
+    this.camPitchDeg = 0;
+    this.callbacks.onCameraModeChanged?.(next);
+    this.pushSubtitle(
+      next === "first" ? "Chế độ Camera: Góc nhìn thứ 1 (V để đổi)" : "Chế độ Camera: Góc nhìn thứ 3 (V để đổi)",
+      2.2
+    );
+  }
+
   startNight(night: NightNumber, seed = this.sessionSeed++): void {
+    this.menuShowcaseActive = false;
     this.clearDynamicEntities();
     this.worldHandle?.dispose();
 
     this.sim = new GameSimulation({ seed, night });
     this.worldHandle = buildNightWorld(this.scene, this.sim.map);
     this.camYawDeg = 0;
+    this.camPitchDeg = 0;
     this.accumulator = 0;
     this.endReported = false;
     this.pendingPauseToggle = false;
@@ -397,6 +438,11 @@ export class DaoDenLongClient {
     }
     if (e.code === "KeyC") {
       this.camYawDeg = 0;
+      this.camPitchDeg = 0;
+      return;
+    }
+    if (e.code === "KeyV" && this.sim && !this.sim.paused) {
+      this.toggleCameraMode();
       return;
     }
     this.keys.add(e.code);
@@ -410,13 +456,22 @@ export class DaoDenLongClient {
     this.audio.unlock();
     this.dragging = true;
     this.lastPointerX = e.clientX;
+    this.lastPointerY = e.clientY;
   };
 
   private readonly onPointerMove = (e: PointerEvent): void => {
     if (!this.dragging) return;
     const dx = e.clientX - this.lastPointerX;
+    const dy = e.clientY - this.lastPointerY;
     this.lastPointerX = e.clientX;
+    this.lastPointerY = e.clientY;
     this.camYawDeg = (this.camYawDeg - dx * 0.35 * this.settings.mouseSensitivity) % 360;
+    if (this.settings.cameraMode === "first") {
+      this.camPitchDeg = Math.max(
+        -28,
+        Math.min(35, this.camPitchDeg - dy * 0.25 * this.settings.mouseSensitivity)
+      );
+    }
   };
 
   private readonly onPointerUp = (): void => {
@@ -503,6 +558,22 @@ export class DaoDenLongClient {
           reason: this.sim.gameOverReason,
         });
       }
+    } else if (this.menuShowcaseActive && this.worldHandle) {
+      // Gentle cinematic orbit showcasing the glowing ancient Japanese village behind the Main Menu
+      this.worldHandle.update(
+        elapsedSec,
+        { active: false, warning: false, dirDeg: 0 },
+        this.settings.reducedMotion,
+        0.35,
+        0.75
+      );
+      const orbitA = this.settings.reducedMotion ? -Math.PI * 0.5 : -Math.PI * 0.5 + elapsedSec * 0.08;
+      this.camera.position.set(Math.cos(orbitA) * 20, 7.2, Math.sin(orbitA) * 20);
+      this.camera.lookAt(0, 2.2, 8);
+      this.playerGroup.root.rotation.y = Math.sin(elapsedSec * 0.5) * 0.4;
+      this.playerGroup.miniLantern.rotation.z = this.settings.reducedMotion
+        ? 0
+        : Math.sin(elapsedSec * 3.2) * 0.12;
     }
 
     this.renderer.render(this.scene, this.camera);
@@ -600,10 +671,10 @@ export class DaoDenLongClient {
     if (!this.sim) return;
     const sim = this.sim;
     const speedMag = Math.hypot(sim.player.vel[0], sim.player.vel[2]);
+    const isMoving = sim.player.grounded && speedMag > 0.35;
+    const walkPhase = elapsedSec * (sim.player.dashTicks > 0 ? 20 : 12.5);
     const walkBob =
-      !this.settings.reducedMotion && sim.player.grounded && speedMag > 0.4
-        ? Math.sin(elapsedSec * 14) * 0.05
-        : 0;
+      !this.settings.reducedMotion && isMoving ? Math.abs(Math.sin(walkPhase)) * 0.065 : 0;
 
     this.playerGroup.root.position.set(
       sim.player.pos[0],
@@ -611,19 +682,52 @@ export class DaoDenLongClient {
       sim.player.pos[2]
     );
     this.playerGroup.root.rotation.y = sim.player.facingYawRad;
-    this.playerGroup.miniLantern.position.x = this.settings.reducedMotion
+
+    // Articulated limbs animation (legs stride, left arm counter-swing, right lantern arm & staff sway)
+    if (!this.settings.reducedMotion && isMoving) {
+      const swing = Math.sin(walkPhase) * Math.min(1, speedMag / 5.5);
+      this.playerGroup.leftLeg.rotation.x = swing * 0.65;
+      this.playerGroup.rightLeg.rotation.x = -swing * 0.65;
+      this.playerGroup.leftArm.rotation.x = -swing * 0.55;
+      this.playerGroup.rightArm.rotation.x = -0.62 + swing * 0.16;
+    } else if (!sim.player.grounded) {
+      // Expressive mid-air jump tuck
+      this.playerGroup.leftLeg.rotation.x = 0.38;
+      this.playerGroup.rightLeg.rotation.x = -0.28;
+      this.playerGroup.leftArm.rotation.x = -0.45;
+      this.playerGroup.rightArm.rotation.x = -0.82;
+    } else {
+      this.playerGroup.leftLeg.rotation.x = 0;
+      this.playerGroup.rightLeg.rotation.x = 0;
+      this.playerGroup.leftArm.rotation.x = 0;
+      this.playerGroup.rightArm.rotation.x = -0.52;
+    }
+
+    this.playerGroup.miniLantern.rotation.z = this.settings.reducedMotion
       ? 0
-      : Math.sin(elapsedSec * 4.5) * 0.05;
+      : Math.sin(elapsedSec * 4.5) * (0.08 + Math.min(0.18, speedMag * 0.025));
     this.playerGroup.scarfTail.rotation.x =
-      0.25 +
-      Math.min(0.9, speedMag * 0.07) +
+      0.28 +
+      Math.min(0.95, speedMag * 0.08) +
       (this.settings.reducedMotion ? 0 : Math.sin(elapsedSec * 10) * 0.08);
-    this.playerGroup.root.visible =
+
+    const isFirstPerson = this.settings.cameraMode === "first";
+    const blinkVisible =
       sim.player.respawnTicks > 0
         ? false
         : sim.player.invulnTicks > 0 && !this.settings.reducedMotion
           ? Math.floor(elapsedSec * 16) % 2 === 0
           : true;
+    this.playerGroup.root.visible = !isFirstPerson && blinkVisible;
+    this.fpLanternRig.root.visible = isFirstPerson && sim.player.respawnTicks === 0;
+    if (isFirstPerson) {
+      const swayX = this.settings.reducedMotion ? 0 : Math.cos(walkPhase * 0.5) * (isMoving ? 0.032 : 0.008);
+      const swayY = this.settings.reducedMotion ? 0 : Math.sin(walkPhase) * (isMoving ? 0.028 : 0.006);
+      this.fpLanternRig.root.position.set(0.62 + swayX, -0.26 + swayY, -0.98);
+      this.fpLanternRig.lantern.rotation.z = this.settings.reducedMotion
+        ? 0
+        : Math.sin(elapsedSec * 4.2) * 0.1;
+    }
 
     for (let i = 0; i < this.dashTrailMeshes.length; i += 1) {
       const ghost = this.dashTrailMeshes[i];
@@ -820,12 +924,32 @@ export class DaoDenLongClient {
     if (!this.sim) return;
     const p = this.sim.player.pos;
     const theta = (this.camYawDeg * Math.PI) / 180;
-    const dist = 12.2;
-    const height = 4.6;
     const shake =
       !this.settings.reducedMotion && this.cameraShakeTimer > 0
-        ? Math.sin(elapsedSec * 65) * 0.28
+        ? Math.sin(elapsedSec * 65) * 0.24
         : 0;
+
+    if (this.settings.cameraMode === "first") {
+      const speedMag = Math.hypot(this.sim.player.vel[0], this.sim.player.vel[2]);
+      const headBob =
+        !this.settings.reducedMotion && this.sim.player.grounded && speedMag > 0.35
+          ? Math.sin(elapsedSec * 12.5) * 0.055
+          : 0;
+      const eyeY = p[1] + 1.48 + headBob;
+      this.camera.position.set(p[0] + shake * 0.5, eyeY, p[2]);
+      const pitchRad = (this.camPitchDeg * Math.PI) / 180;
+      const lookDist = 12;
+      const horiz = Math.cos(pitchRad) * lookDist;
+      this.camera.lookAt(
+        p[0] + Math.sin(theta) * horiz,
+        eyeY + Math.sin(pitchRad) * lookDist,
+        p[2] + Math.cos(theta) * horiz
+      );
+      return;
+    }
+
+    const dist = 12.2;
+    const height = 4.6;
     const tx = p[0] - Math.sin(theta) * dist + shake;
     const tz = p[2] - Math.cos(theta) * dist;
     this.camera.position.lerp(new THREE.Vector3(tx, p[1] + height, tz), 0.16);
@@ -952,6 +1076,8 @@ export class DaoDenLongClient {
       this.hud.cdPulseEl.textContent = `Cần ${sim.tuning.pulse_cost}`;
       this.hud.cdPulseEl.className = "ability-status cd";
     }
+
+    this.hud.cdCameraEl.textContent = this.settings.cameraMode === "first" ? "Thứ 1" : "Thứ 3";
 
     this.updateOffscreenArrows(sim);
   }
@@ -1178,64 +1304,233 @@ export function formatKeyLabel(code: string): string {
   return code;
 }
 
-function buildMayMesh(): {
+interface MayRig {
   root: THREE.Group;
-  miniLantern: THREE.Mesh;
+  leftLeg: THREE.Group;
+  rightLeg: THREE.Group;
+  leftArm: THREE.Group;
+  rightArm: THREE.Group;
+  miniLantern: THREE.Group;
   scarfTail: THREE.Mesh;
-} {
+}
+
+/** Builds a detailed, articulated character model for May (legs, sandals, kimono coat, obi, scarf, arms, lantern staff, expressive face, hair & Non La hat). */
+function buildMayMesh(): MayRig {
   const root = new THREE.Group();
-  const coat = new THREE.Mesh(
-    new THREE.ConeGeometry(0.42, 0.95, 16),
-    new THREE.MeshStandardMaterial({ color: PALETTE.mayCoat, roughness: 0.72 })
-  );
-  coat.position.y = 0.48;
-  root.add(coat);
 
-  const scarf = new THREE.Mesh(
-    new THREE.TorusGeometry(0.24, 0.08, 8, 16),
-    new THREE.MeshStandardMaterial({ color: PALETTE.mayScarf, roughness: 0.65 })
-  );
-  scarf.rotation.x = Math.PI / 2;
-  scarf.position.y = 0.92;
-  root.add(scarf);
+  const coatMat = new THREE.MeshStandardMaterial({ color: PALETTE.mayCoat, roughness: 0.72 });
+  const scarfMat = new THREE.MeshStandardMaterial({ color: PALETTE.mayScarf, roughness: 0.62 });
+  const pantsMat = new THREE.MeshStandardMaterial({ color: 0x232942, roughness: 0.85 });
+  const sandalMat = new THREE.MeshStandardMaterial({ color: 0x7a5233, roughness: 0.82 });
+  const skinMat = new THREE.MeshStandardMaterial({ color: 0xf8dcc0, roughness: 0.78 });
+  const hairMat = new THREE.MeshStandardMaterial({ color: 0x1b1a29, roughness: 0.82 });
+  const woodMat = new THREE.MeshStandardMaterial({ color: 0x543620, roughness: 0.8 });
+  const goldMat = new THREE.MeshStandardMaterial({
+    color: PALETTE.gold,
+    emissive: 0x7a5010,
+    emissiveIntensity: 0.4,
+    metalness: 0.5,
+    roughness: 0.3,
+  });
 
-  const scarfTail = new THREE.Mesh(
-    new THREE.BoxGeometry(0.18, 0.45, 0.05),
-    new THREE.MeshStandardMaterial({ color: PALETTE.mayScarf, roughness: 0.65 })
-  );
-  scarfTail.position.set(0, 0.75, -0.28);
+  // 1. Articulated Legs (Hakama trousers + wooden Geta sandals)
+  const makeLeg = (sx: number): THREE.Group => {
+    const hip = new THREE.Group();
+    hip.position.set(sx, 0.44, 0);
+    const thigh = new THREE.Mesh(new THREE.CylinderGeometry(0.095, 0.085, 0.24, 10), pantsMat);
+    thigh.position.y = -0.1;
+    hip.add(thigh);
+    const calf = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.065, 0.2, 10), pantsMat);
+    calf.position.y = -0.28;
+    hip.add(calf);
+    const foot = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.07, 0.24), sandalMat);
+    foot.position.set(0, -0.4, 0.04);
+    hip.add(foot);
+    const strap = new THREE.Mesh(new THREE.BoxGeometry(0.145, 0.035, 0.06), scarfMat);
+    strap.position.set(0, -0.355, 0.07);
+    hip.add(strap);
+    return hip;
+  };
+  const leftLeg = makeLeg(-0.14);
+  const rightLeg = makeLeg(0.14);
+  root.add(leftLeg, rightLeg);
+
+  // 2. Layered Tunic / Kimono Robe + Crimson Obi Sash + Golden Trim
+  const skirt = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.38, 0.52, 16), coatMat);
+  skirt.position.y = 0.56;
+  root.add(skirt);
+
+  const hemTrim = new THREE.Mesh(new THREE.TorusGeometry(0.365, 0.025, 6, 20), scarfMat);
+  hemTrim.rotation.x = Math.PI / 2;
+  hemTrim.position.y = 0.32;
+  root.add(hemTrim);
+
+  const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.23, 0.42, 14), coatMat);
+  torso.position.y = 0.96;
+  root.add(torso);
+
+  const obi = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.255, 0.16, 14), scarfMat);
+  obi.position.y = 0.78;
+  root.add(obi);
+  const obiKnot = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.15, 0.14), scarfMat);
+  obiKnot.position.set(0, 0.78, -0.24);
+  root.add(obiKnot);
+  const obiCord = new THREE.Mesh(new THREE.TorusGeometry(0.25, 0.02, 6, 16), goldMat);
+  obiCord.rotation.x = Math.PI / 2;
+  obiCord.position.y = 0.78;
+  root.add(obiCord);
+
+  const scarfCollar = new THREE.Mesh(new THREE.TorusGeometry(0.2, 0.065, 8, 16), scarfMat);
+  scarfCollar.rotation.x = Math.PI / 2;
+  scarfCollar.position.y = 1.15;
+  root.add(scarfCollar);
+
+  const scarfTail = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.48, 0.05), scarfMat);
+  scarfTail.position.set(0, 0.96, -0.26);
   root.add(scarfTail);
 
-  const head = new THREE.Mesh(
-    new THREE.SphereGeometry(0.24, 14, 14),
-    new THREE.MeshStandardMaterial({ color: 0xf6d8bc, roughness: 0.8 })
-  );
-  head.position.y = 1.1;
-  root.add(head);
+  // 3. Articulated Arms with flowing Kimono sleeves & hands
+  const makeArm = (sx: number): THREE.Group => {
+    const sh = new THREE.Group();
+    sh.position.set(sx, 1.1, 0);
+    const upper = new THREE.Mesh(new THREE.CylinderGeometry(0.075, 0.14, 0.36, 10), coatMat);
+    upper.position.y = -0.17;
+    sh.add(upper);
+    const cuff = new THREE.Mesh(new THREE.TorusGeometry(0.125, 0.022, 6, 12), scarfMat);
+    cuff.rotation.x = Math.PI / 2;
+    cuff.position.y = -0.34;
+    sh.add(cuff);
+    const hand = new THREE.Mesh(new THREE.SphereGeometry(0.068, 10, 10), skinMat);
+    hand.position.y = -0.39;
+    sh.add(hand);
+    return sh;
+  };
+  const leftArm = makeArm(-0.29);
+  const rightArm = makeArm(0.29);
+  rightArm.rotation.x = -0.52;
+  root.add(leftArm, rightArm);
 
-  const nonLa = new THREE.Mesh(
-    new THREE.ConeGeometry(0.64, 0.35, 24),
-    new THREE.MeshStandardMaterial({ color: PALETTE.sandHat, roughness: 0.82 })
-  );
-  nonLa.position.y = 1.34;
-  root.add(nonLa);
+  // Bamboo lantern staff + swinging glowing paper lantern in May's right hand
+  const miniLantern = new THREE.Group();
+  miniLantern.position.set(0, -0.4, 0.08);
+  const staff = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.022, 0.52, 6), woodMat);
+  staff.rotation.x = Math.PI / 2.2;
+  staff.position.set(0, 0.06, 0.2);
+  miniLantern.add(staff);
 
-  const miniLantern = new THREE.Mesh(
-    new THREE.OctahedronGeometry(0.11, 0),
+  const lanternCore = new THREE.Mesh(
+    new THREE.SphereGeometry(0.13, 12, 12),
     new THREE.MeshStandardMaterial({
       color: PALETTE.lanternCore,
       emissive: PALETTE.lanternLit,
-      emissiveIntensity: 1.9,
+      emissiveIntensity: 2.0,
     })
   );
-  miniLantern.position.set(0, 1.08, 0.52);
-  root.add(miniLantern);
+  lanternCore.scale.set(0.88, 1.25, 0.88);
+  lanternCore.position.set(0, -0.14, 0.44);
+  miniLantern.add(lanternCore);
 
-  const miniLight = new THREE.PointLight(PALETTE.lanternLit, 2.4, 8.5);
-  miniLight.position.set(0, 1.1, 0.55);
-  root.add(miniLight);
+  const capTop = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.1, 0.05, 8), woodMat);
+  capTop.position.set(0, 0.02, 0.44);
+  miniLantern.add(capTop);
+  const capBot = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.07, 0.05, 8), woodMat);
+  capBot.position.set(0, -0.3, 0.44);
+  miniLantern.add(capBot);
 
-  return { root, miniLantern, scarfTail };
+  const miniLight = new THREE.PointLight(PALETTE.lanternLit, 2.8, 10);
+  miniLight.position.set(0, -0.12, 0.48);
+  miniLantern.add(miniLight);
+  rightArm.add(miniLantern);
+
+  // 4. Expressive Head, Dark Hair, Sparkling Eyes, Rosy Cheeks & Woven Non La Hat
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.23, 16, 16), skinMat);
+  head.position.y = 1.35;
+  root.add(head);
+
+  const hairCap = new THREE.Mesh(new THREE.SphereGeometry(0.245, 14, 12), hairMat);
+  hairCap.position.set(0, 1.38, -0.04);
+  root.add(hairCap);
+  for (const sx of [-0.19, 0.19]) {
+    const lock = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.03, 0.26, 8), hairMat);
+    lock.position.set(sx, 1.25, 0.06);
+    root.add(lock);
+  }
+
+  const eyeMat = new THREE.MeshBasicMaterial({ color: 0x141320 });
+  const glintMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+  const blushMat = new THREE.MeshBasicMaterial({ color: 0xff9aa8, transparent: true, opacity: 0.65 });
+  for (const sx of [-0.085, 0.085]) {
+    const eye = new THREE.Mesh(new THREE.SphereGeometry(0.032, 8, 8), eyeMat);
+    eye.position.set(sx, 1.35, 0.205);
+    root.add(eye);
+    const glint = new THREE.Mesh(new THREE.SphereGeometry(0.012, 6, 6), glintMat);
+    glint.position.set(sx + 0.01, 1.365, 0.23);
+    root.add(glint);
+    const cheek = new THREE.Mesh(new THREE.CircleGeometry(0.032, 8), blushMat);
+    cheek.position.set(sx * 1.45, 1.3, 0.21);
+    root.add(cheek);
+  }
+
+  const nonLa = new THREE.Mesh(
+    new THREE.ConeGeometry(0.64, 0.34, 24),
+    new THREE.MeshStandardMaterial({ color: PALETTE.sandHat, roughness: 0.8 })
+  );
+  nonLa.position.y = 1.62;
+  root.add(nonLa);
+  const hatBand = new THREE.Mesh(new THREE.TorusGeometry(0.26, 0.025, 6, 18), scarfMat);
+  hatBand.rotation.x = Math.PI / 2;
+  hatBand.position.y = 1.56;
+  root.add(hatBand);
+
+  return { root, leftLeg, rightLeg, leftArm, rightArm, miniLantern, scarfTail };
+}
+
+/** Builds the cozy first-person viewmodel (May's sleeve & swaying glowing hand-lantern in bottom-right corner). */
+function buildFirstPersonLanternRig(): { root: THREE.Group; lantern: THREE.Group } {
+  const root = new THREE.Group();
+  const coatMat = new THREE.MeshStandardMaterial({ color: PALETTE.mayCoat, roughness: 0.72 });
+  const scarfMat = new THREE.MeshStandardMaterial({ color: PALETTE.mayScarf, roughness: 0.62 });
+  const woodMat = new THREE.MeshStandardMaterial({ color: 0x543620, roughness: 0.8 });
+
+  const sleeve = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.14, 0.42, 10), coatMat);
+  sleeve.rotation.x = Math.PI / 2.6;
+  sleeve.position.set(0.08, -0.14, 0.22);
+  root.add(sleeve);
+  const cuff = new THREE.Mesh(new THREE.TorusGeometry(0.095, 0.02, 6, 12), scarfMat);
+  cuff.position.set(0.05, -0.02, 0.03);
+  root.add(cuff);
+
+  const staff = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.022, 0.56, 6), woodMat);
+  staff.rotation.x = Math.PI / 2.2;
+  staff.position.set(0.02, 0.04, -0.16);
+  root.add(staff);
+
+  const lantern = new THREE.Group();
+  lantern.position.set(0.0, 0.08, -0.4);
+  const glow = new THREE.Mesh(
+    new THREE.SphereGeometry(0.14, 12, 12),
+    new THREE.MeshStandardMaterial({
+      color: PALETTE.lanternCore,
+      emissive: PALETTE.lanternLit,
+      emissiveIntensity: 2.1,
+    })
+  );
+  glow.scale.set(0.86, 1.24, 0.86);
+  glow.position.y = -0.18;
+  lantern.add(glow);
+  const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.1, 0.05, 8), woodMat);
+  cap.position.y = -0.01;
+  lantern.add(cap);
+  const bot = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.07, 0.05, 8), woodMat);
+  bot.position.y = -0.35;
+  lantern.add(bot);
+
+  const fpLight = new THREE.PointLight(PALETTE.lanternLit, 2.4, 10);
+  fpLight.position.set(0, -0.18, 0);
+  lantern.add(fpLight);
+
+  root.add(lantern);
+  return { root, lantern };
 }
 
 function buildLanternVisual(safeRadius: number): LanternVisual {

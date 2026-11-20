@@ -175,3 +175,10 @@ Sau khi người dùng phản hồi chụp màn hình phát hiện:
 3. **Mở rộng tầm nhìn toàn cảnh Nhật Bản cổ đại (không làm thay đổi phạm vi vật lý Test Contract v1.3):** Bổ sung vòm trời shader đầy `1.350` ngôi sao, dải Ngân Hà (*Amanogawa*), Trăng rằm (*Tsuki*), Mặt Trời Bình Minh (*Asahi*) mọc dần sau đỉnh núi Phú Sĩ phủ tuyết, sao băng (*Nagareboshi*), mây *ukiyo-e*, vành đai 18 dãy núi + đảo chùa 5 tầng (*Gojū-no-tō*) xung quanh, hàng chục nhà *machiya* / trà quán *shoji* phát sáng và rừng cây *Sakura*, phong lá đỏ *Momiji*, thông đen, rặng tre dày đặc trên cả 3 Đêm (tắt hoàn toàn trong chế độ benchmark `benchScene.ts`).
 
 Đã chụp và kiểm tra trực quan qua Chrome `1280×720` cho cả Đêm 1, Đêm 2, Đêm 3 và chạy lại `npm run verify`: **33/33 tests pass, `21,600` ticks = `194 ms`, soak 3 Đêm `0 crashes`, Contract v1.3 nguyên vẹn**.
+
+### 6. Nâng cấp Menu chính 3D, Nhân vật Mây có tay chân, NPC dân làng & Chuyển Góc nhìn Thứ 1 / Thứ 3
+
+- **Giao diện Menu chính (`index.html`, `src/render/gameScene.ts`):** Menu thiết kế theo phong cách sơn mài viền vàng + ấn triện đỏ (`燈 · v1.0.0`), 3 thẻ chọn Đêm trực quan, chạy trên nền 3D ngôi làng Đảo Bến quay chậm trực tiếp phía sau.
+- **Nhân vật Mây & NPC dân làng (`src/render/gameScene.ts`, `src/render/worldDecor.ts`):** Dựng đầy đủ thân, đai *obi*, khăn quàng, 2 tay áo kimono + gậy đèn lồng, 2 chân + guốc gỗ *geta*, mắt có ánh sáng & nón lá chuyển động theo tốc độ chạy/nhảy; bổ sung 7–8 NPC (Ông Đăng, vu nữ *Miko*, dân làng, trẻ cầm đèn) đi dạo tự nhiên trên cả 3 Đêm (hoàn toàn cô lập trong `src/render/`, không ảnh hưởng headless/benchmark).
+- **Chế độ Camera Thứ 1 / Thứ 3:** Bổ sung phím `V` + tùy chọn trên Menu/Cài đặt/HUD chuyển mượt giữa góc nhìn thứ 3 và góc nhìn thứ 1 (có đèn lồng cầm tay đung đưa và kéo chuột nhìn lên/xuống).
+- Đã chụp kiểm chứng trực quan đủ 3 trạng thái (Menu chính, Góc nhìn Thứ 3 + NPC, Góc nhìn Thứ 1) và chạy `npm run verify` pass 100% (`33/33 tests`, `21,600` ticks = `167 ms`, soak 3 Đêm `0 crashes`).

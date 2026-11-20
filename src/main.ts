@@ -57,6 +57,7 @@ function loadSettings(): UserSettings {
         colorblindMode: false,
         reducedMotion: false,
         largeText: false,
+        cameraMode: "third",
         keyBindings: { ...DEFAULT_KEY_BINDINGS },
       };
     }
@@ -70,6 +71,7 @@ function loadSettings(): UserSettings {
       colorblindMode: Boolean(parsed.colorblindMode),
       reducedMotion: Boolean(parsed.reducedMotion),
       largeText: Boolean(parsed.largeText),
+      cameraMode: parsed.cameraMode === "first" ? "first" : "third",
       keyBindings: {
         ...DEFAULT_KEY_BINDINGS,
         ...(typeof parsed.keyBindings === "object" && parsed.keyBindings ? parsed.keyBindings : {}),
@@ -82,6 +84,7 @@ function loadSettings(): UserSettings {
       colorblindMode: false,
       reducedMotion: false,
       largeText: false,
+      cameraMode: "third",
       keyBindings: { ...DEFAULT_KEY_BINDINGS },
     };
   }
@@ -173,6 +176,8 @@ if (params.get("bench") === "1" && appEl) {
   const lblVolume = document.getElementById("lbl-volume")!;
   const optSens = document.getElementById("opt-sens") as HTMLInputElement;
   const lblSens = document.getElementById("lbl-sens")!;
+  const optCameraMode = document.getElementById("opt-camera-mode") as HTMLSelectElement;
+  const btnToggleCamMenu = document.getElementById("btn-toggle-camera-menu") as HTMLButtonElement;
   const optColorblind = document.getElementById("opt-colorblind") as HTMLInputElement;
   const optReduced = document.getElementById("opt-reduced-motion") as HTMLInputElement;
   const optLargeText = document.getElementById("opt-large-text") as HTMLInputElement;
@@ -205,11 +210,17 @@ if (params.get("bench") === "1" && appEl) {
       moteBarEl: document.getElementById("mote-bar")!,
       cdDashEl: document.getElementById("cd-dash")!,
       cdPulseEl: document.getElementById("cd-pulse")!,
+      cdCameraEl: document.getElementById("cd-camera")!,
       lanternArrowEl: document.getElementById("lantern-arrow")!,
       shadeArrowEl: document.getElementById("shade-arrow")!,
       minimapCanvas: document.getElementById("minimap-canvas") as HTMLCanvasElement,
     },
     {
+      onCameraModeChanged(mode): void {
+        settings.cameraMode = mode;
+        saveSettings(settings);
+        syncSettingsUI();
+      },
       onPauseToggled(paused): void {
         if (paused) {
           screenPause.classList.add("visible");
@@ -355,6 +366,9 @@ if (params.get("bench") === "1" && appEl) {
     lblVolume.textContent = `${Math.round(settings.volume * 100)}%`;
     optSens.value = settings.mouseSensitivity.toFixed(1);
     lblSens.textContent = settings.mouseSensitivity.toFixed(1);
+    optCameraMode.value = settings.cameraMode;
+    btnToggleCamMenu.textContent =
+      settings.cameraMode === "first" ? "Góc nhìn: Thứ 1" : "Góc nhìn: Thứ 3";
     optColorblind.checked = settings.colorblindMode;
     optReduced.checked = settings.reducedMotion;
     optLargeText.checked = settings.largeText;
@@ -363,6 +377,7 @@ if (params.get("bench") === "1" && appEl) {
 
   syncSettingsUI();
   client.applySettings(settings);
+  client.startMenuShowcase();
 
   async function openLeaderboardModal(): Promise<void> {
     hideAllOverlays();
@@ -440,12 +455,26 @@ if (params.get("bench") === "1" && appEl) {
 
   const returnToMenu = (): void => {
     client.stopNight();
+    client.startMenuShowcase();
     hudRoot.classList.remove("active");
     hideAllOverlays();
     screenMenu.classList.add("visible");
   };
   document.getElementById("btn-back-menu-pause")!.addEventListener("click", returnToMenu);
   document.getElementById("btn-result-menu")!.addEventListener("click", returnToMenu);
+
+  btnToggleCamMenu.addEventListener("click", () => {
+    settings.cameraMode = settings.cameraMode === "third" ? "first" : "third";
+    saveSettings(settings);
+    client.applySettings(settings);
+    syncSettingsUI();
+  });
+  optCameraMode.addEventListener("change", () => {
+    settings.cameraMode = optCameraMode.value === "first" ? "first" : "third";
+    saveSettings(settings);
+    client.applySettings(settings);
+    syncSettingsUI();
+  });
 
   document.getElementById("btn-open-settings-menu")!.addEventListener("click", () => {
     settingsReturnTo = "menu";
@@ -505,7 +534,13 @@ if (params.get("bench") === "1" && appEl) {
     }
   });
 
-  // Optional direct launch query (?night=1|2|3) for quick preview / showcase
+  // Optional direct launch query (?night=1|2|3&cam=first|third) for quick preview / showcase
+  const camParam = params.get("cam");
+  if (camParam === "first" || camParam === "third") {
+    settings.cameraMode = camParam;
+    client.applySettings(settings);
+    syncSettingsUI();
+  }
   const autoNight = Number(params.get("night"));
   if (autoNight === 1 || autoNight === 2 || autoNight === 3) {
     currentNight = autoNight;
